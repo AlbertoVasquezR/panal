@@ -42,7 +42,7 @@ Glyphs that Cascadia (Windows Terminal's font) doesn't have, like "↻", are dra
 
 Every color comes from the palette file in `internal/ui`; don't write a loose `lipgloss.Color("#…")` anywhere else.
 
-- Per-agent accents: claude `#D97757`, agy `#9575CD`, codex `#69F0AE`, opencode `#FFD54F`. They are the pixel art's colors: if you change one, change the mascot.
+- Per-agent accents: claude `#D97757`, agy `#9575CD`, codex `#69F0AE`, opencode `#FFD54F`, cursor `#38BDF8`. They are the pixel art's colors: if you change one, change the mascot.
 - Themes (`-theme`, `ApplyTheme` in `internal/ui`): if you add a dim, border or background color, decide what value it takes in "contrast". Never put a style with a fixed color in a package variable without resetting it in `ApplyTheme`.
 - Adaptive semantic colors (`AdaptiveColor` light/dark): green, amber, red, blue, dim, border, empty and brand.
 - Text on colored banners or badges: the fixed black "text on color" color, never the palette's "0" nor grey.

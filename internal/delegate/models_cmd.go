@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"sort"
 	"strings"
 	"time"
@@ -25,6 +24,7 @@ Lists the models each agent CLI says it can use, cached in %s:
   agy       agy models
   codex     codex debug models
   opencode  opencode api model.list (opencode models as a fallback)
+  cursor    cursor-agent models (cursor-agent --list-models as a fallback)
 
 Those commands only list: nothing is run and no quota is spent. The cache
 is refreshed with -refresh, in the background when the dashboard starts and
@@ -43,7 +43,7 @@ Flags:
 // the exit code.
 func ModelsMain(args []string, stdout, stderr io.Writer) int {
 	conf := config.Read(config.Path())
-	return modelsMain(args, stdout, stderr, conf, models.Path(), models.Exec, exec.LookPath, time.Now)
+	return modelsMain(args, stdout, stderr, conf, models.Path(), models.Exec, config.LookPath, time.Now)
 }
 
 func modelsMain(args []string, stdout, stderr io.Writer, conf config.Conf, path string, run models.Runner, lookPath func(string) (string, error), now func() time.Time) int {

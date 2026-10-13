@@ -3,7 +3,6 @@ package activity
 import (
 	"bytes"
 	"encoding/json"
-	"path/filepath"
 	"time"
 )
 
@@ -71,7 +70,7 @@ func FromClaude(b []byte) (string, time.Time) {
 
 func describeTool(b claudeBlock) string {
 	in := b.Input
-	base := filepath.Base(in.FilePath)
+	base := baseName(in.FilePath)
 	switch b.Name {
 	case "Bash", "PowerShell":
 		if in.Description != "" {

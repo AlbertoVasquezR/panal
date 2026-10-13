@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/rand/v2"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -117,7 +116,7 @@ func systemCatalog(refresh bool) models.Catalog {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	return models.Ensure(ctx, models.Path(), models.Exec, exec.LookPath, 15*time.Second, time.Now())
+	return models.Ensure(ctx, models.Path(), models.Exec, config.LookPath, 15*time.Second, time.Now())
 }
 
 // poolLinks parses the pool, or makes the default one.
@@ -263,7 +262,7 @@ Flags:
 // exit code.
 func RouteMain(args []string, stdout, stderr io.Writer) int {
 	conf := config.Read(config.Path())
-	return routeMain(args, stdout, stderr, conf, systemRouting(conf), exec.LookPath)
+	return routeMain(args, stdout, stderr, conf, systemRouting(conf), config.LookPath)
 }
 
 func routeMain(args []string, stdout, stderr io.Writer, conf config.Conf, rt routing, lookPath func(string) (string, error)) int {

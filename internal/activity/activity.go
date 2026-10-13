@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -36,6 +35,8 @@ func Latest(agent, logPath string) (string, time.Time) {
 		return fromFile(logPath+".jsonl", FromCodex)
 	case "agy":
 		return fromFile(logPath+".log", FromAgy)
+	case "cursor":
+		return fromFile(logPath+".jsonl", FromCursor)
 	}
 	return "", time.Time{}
 }
@@ -145,7 +146,7 @@ func FromCodex(b []byte) (string, time.Time) {
 		case "file_change":
 			var ps []string
 			for _, c := range it.Changes {
-				ps = append(ps, filepath.Base(c.Path))
+				ps = append(ps, baseName(c.Path))
 			}
 			if len(ps) > 0 {
 				return "edits " + strings.Join(ps, ", "), time.Time{}
@@ -288,6 +289,16 @@ func firstLine(s string) string {
 	return strings.TrimSpace(s)
 }
 
+// baseName is the last element of a Windows or Unix path. Agent logs mix
+// both; filepath.Base only splits on this OS's separator.
+func baseName(p string) string {
+	p = strings.TrimRight(p, `/\`)
+	if i := strings.LastIndexAny(p, `/\`); i >= 0 {
+		return p[i+1:]
+	}
+	return p
+}
+
 // ------------------------------------------------------------- repetition --
 
 // Repetition tells whether the agent keeps doing the same thing: the last
@@ -304,6 +315,8 @@ func Repetition(agent, logPath string) (string, int) {
 		path, actions = logPath+".jsonl", codexActions
 	case "agy":
 		path, actions = logPath+".log", agyActions
+	case "cursor":
+		path, actions = logPath+".jsonl", cursorActions
 	default:
 		return "", 0
 	}
@@ -410,6 +423,92 @@ func agyActions(b []byte) []string {
 				id = "$ " + CleanCommand(call.Args.CommandLine)
 			}
 			out = append(out, strings.TrimSpace(id))
+		}
+	}
+	return out
+}
+
+// ----------------------------------------------------------------- cursor --
+// cursor-agent -p --output-format stream-json: one JSON object per line,
+// Claude Code-compatible. Tool calls use tool_call.{shell,read,write,…}ToolCall.
+
+type cursorEvent struct {
+	Type    string `json:"type"`
+	Subtype string `json:"subtype"`
+	Model   string `json:"model"`
+	Message struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	} `json:"message"`
+	ToolCall map[string]struct {
+		Args struct {
+			Command string `json:"command"`
+			Path    string `json:"path"`
+		} `json:"args"`
+	} `json:"tool_call"`
+}
+
+// FromCursor looks, from the end backwards, for the last stream-json event
+// that says something: a tool call or the last assistant line.
+func FromCursor(b []byte) (string, time.Time) {
+	lines := bytes.Split(b, []byte("\n"))
+	for i := len(lines) - 1; i >= 0; i-- {
+		if s := cursorLine(lines[i]); s != "" {
+			return s, time.Time{}
+		}
+	}
+	return "", time.Time{}
+}
+
+func cursorLine(l []byte) string {
+	var ev cursorEvent
+	if json.Unmarshal(bytes.TrimSpace(l), &ev) != nil {
+		return ""
+	}
+	switch ev.Type {
+	case "tool_call":
+		if ev.Subtype != "" && ev.Subtype != "started" {
+			return ""
+		}
+		for name, call := range ev.ToolCall {
+			kind := strings.TrimSuffix(name, "ToolCall")
+			if call.Args.Command != "" {
+				if c := CleanCommand(call.Args.Command); c != "" {
+					return "$ " + c
+				}
+			}
+			if call.Args.Path != "" {
+				base := baseName(call.Args.Path)
+				switch {
+				case strings.Contains(strings.ToLower(kind), "write"):
+					return "writes " + base
+				case strings.Contains(strings.ToLower(kind), "read"):
+					return "reads " + base
+				default:
+					return kind + " " + base
+				}
+			}
+			if kind != "" {
+				return "uses " + kind
+			}
+		}
+	case "assistant":
+		for _, c := range ev.Message.Content {
+			if t := stripMarkdown(firstLine(c.Text)); t != "" {
+				return "«" + t + "»"
+			}
+		}
+	}
+	return ""
+}
+
+func cursorActions(b []byte) []string {
+	var out []string
+	for _, l := range bytes.Split(b, []byte("\n")) {
+		if s := cursorLine(l); strings.HasPrefix(s, "$ ") || strings.HasPrefix(s, "writes ") || strings.HasPrefix(s, "reads ") {
+			out = append(out, s)
 		}
 	}
 	return out

@@ -9,6 +9,8 @@
 package runs
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -48,7 +50,7 @@ const (
 // Run is one attempt of one agent at one task.
 type Run struct {
 	Version  int    `json:"version"`
-	ID       string `json:"id"` // e.g. "20261002-101500"; the file is <ID>-<agent>.json
+	ID       string `json:"id"` // e.g. "20261007-123026.847-a3f2c1d0"; the file is <ID>-<agent>.json
 	Agent    string `json:"agent"`
 	Model    string `json:"model"`
 	Effort   string `json:"effort,omitempty"`
@@ -123,23 +125,111 @@ func ReadFile(path string) (Run, error) {
 	return r, nil
 }
 
-// WriteFile writes r (in the current format) atomically to dir/<ID>-<agent>.json
-// and returns the path.
-func WriteFile(dir string, r Run) (string, error) {
+// IDTime is the sortable time prefix of a new run id (milliseconds).
+const IDTime = "20060102-150405.000"
+
+// NewID is a collision-resistant run id: local time to the millisecond
+// plus eight random hex digits. Old second-resolution ids
+// ("20261002-101500", with optional "-2") stay valid to read.
+func NewID(t time.Time) string {
+	return t.Format(IDTime) + "-" + randHex(8)
+}
+
+func randHex(n int) string {
+	b := make([]byte, (n+1)/2)
+	if _, err := rand.Read(b); err != nil {
+		// process id is unique among live panal delegate processes
+		return fmt.Sprintf("%04x", os.Getpid()&0xffff)
+	}
+	s := hex.EncodeToString(b)
+	if len(s) > n {
+		s = s[:n]
+	}
+	return s
+}
+
+func runPath(dir string, r Run) string {
+	return filepath.Join(dir, r.ID+"-"+r.Agent+".json")
+}
+
+func marshalRun(r Run) ([]byte, error) {
 	r.Version = Version
+	data, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(data, '\n'), nil
+}
+
+// WriteFile writes r (in the current format) atomically to dir/<ID>-<agent>.json
+// and returns the path. It overwrites an existing file (the running → done
+// rewrite). Use WriteFileExclusive when first creating a run.
+func WriteFile(dir string, r Run) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
-	data, err := json.MarshalIndent(r, "", "  ")
+	data, err := marshalRun(r)
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(dir, r.ID+"-"+r.Agent+".json")
+	path := runPath(dir, r)
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
 		return "", err
 	}
 	return path, os.Rename(tmp, path)
+}
+
+// WriteFileExclusive creates dir/<ID>-<agent>.json and fails with
+// fs.ErrExist if that name is already taken, so two delegates in the
+// same second cannot share a run file.
+func WriteFileExclusive(dir string, r Run) (string, error) {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	data, err := marshalRun(r)
+	if err != nil {
+		return "", err
+	}
+	path := runPath(dir, r)
+	return path, CreateExclusive(path, data)
+}
+
+// CreateExclusive writes path only if it does not exist (O_EXCL).
+func CreateExclusive(path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	_, werr := f.Write(data)
+	cerr := f.Close()
+	if werr != nil {
+		return werr
+	}
+	return cerr
+}
+
+// CloseIfDead rewrites a still-running run as failed when its process is
+// gone, so the record does not stay "running" forever. pid 0 is left
+// alone (legacy files). It returns the run and whether the file changed.
+func CloseIfDead(path string, r Run, alive func(int) bool, now time.Time) (Run, bool) {
+	if r.Status != Running || r.PID == 0 || alive == nil || alive(r.PID) {
+		return r, false
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	r.Status = Failed
+	r.End = now.Format(time.RFC3339)
+	rc := ExitFailed
+	r.RC = &rc
+	if _, err := WriteFile(filepath.Dir(path), r); err != nil {
+		return r, false
+	}
+	return r, true
 }
 
 // Home is panal's own directory: PANAL_DATA, else ~/.panal.

@@ -83,5 +83,9 @@ func (c *codexEvents) line(l []byte) {
 		if s, _ := activity.FromCodex(l); s != "" {
 			io.WriteString(c.out, "  "+s+"\n")
 		}
+	case ev.Type == "tool_call" || ev.Type == "assistant" || ev.Type == "result":
+		if s, _ := activity.FromCursor(l); s != "" {
+			io.WriteString(c.out, "  "+s+"\n")
+		}
 	}
 }

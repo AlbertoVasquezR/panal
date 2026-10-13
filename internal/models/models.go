@@ -1,5 +1,5 @@
 // Package models discovers which models each agent CLI (agy, codex,
-// opencode) can use, caches the catalog in ~/.panal/models.json and turns it
+// opencode, cursor) can use, caches the catalog in ~/.panal/models.json and turns it
 // into router arms ("cli:model[:effort]"):
 //
 //   - discover.go asks each CLI for its catalog (read-only listing commands
@@ -25,7 +25,7 @@ import (
 )
 
 // CLIs are the agent CLIs whose models panal discovers, in display order.
-var CLIs = []string{"agy", "codex", "opencode"}
+var CLIs = []string{"agy", "codex", "cursor", "opencode"}
 
 // FileName is the cache's name inside runs.Home() (~/.panal).
 const FileName = "models.json"

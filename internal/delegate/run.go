@@ -65,9 +65,12 @@ type Result struct {
 // out or is interrupted. It returns the exit code and what each link did.
 func (r *Runner) Run(t Task) (int, []Result) {
 	start := r.Now()
-	base := start.Format("20060102-150405")
-	first, multi := firstLine(t.Text)
-	taskFile := ""
+	base, taskFile, err := r.allocate(start, t.Text)
+	if err != nil {
+		fmt.Fprintln(r.Stderr, "panal: could not allocate a run id:", err)
+		return runs.ExitFailed, nil
+	}
+	first, _ := firstLine(t.Text)
 	writeTaskFile := func() string {
 		if taskFile == "" {
 			p, err := r.saveTask(base, t.Text)
@@ -77,9 +80,6 @@ func (r *Runner) Run(t Task) (int, []Result) {
 			taskFile = p
 		}
 		return taskFile
-	}
-	if multi {
-		writeTaskFile()
 	}
 
 	var results []Result
@@ -111,7 +111,8 @@ func (r *Runner) Run(t Task) (int, []Result) {
 			run.Start, run.End, run.Status, run.RC = stamp(now), stamp(now), st, rc
 			r.note(run.Log, note)
 			res.Status, res.Note = st, note
-			res.RunFile = r.write(run)
+			res.RunFile = r.writeNew(&run, used)
+			res.Log = run.Log
 			if rc != nil {
 				res.RC = *rc
 			}
@@ -140,7 +141,9 @@ func (r *Runner) Run(t Task) (int, []Result) {
 		}
 
 		run.Start, run.Status = stamp(r.Now()), runs.Running
-		res.RunFile = r.write(run) // before launching: the dashboard sees it start
+		res.RunFile = r.writeNew(&run, used) // before launching: the dashboard sees it start
+		a.Log = run.Log
+		res.Log = run.Log
 		fmt.Fprintf(r.Stderr, "panal: [%d/%d] %s in %s\npanal: log %s\n", i+1, len(t.Chain), l, t.Dir, run.Log)
 
 		began := time.Now()
@@ -148,6 +151,7 @@ func (r *Runner) Run(t Task) (int, []Result) {
 			run.PID = pid
 			r.write(run)
 		})
+		res.Log = run.Log
 		res.Duration = time.Since(began)
 		run.End, run.Status, run.RC = stamp(r.Now()), st, intp(rc)
 		r.write(run)
@@ -263,14 +267,33 @@ func (r *Runner) execute(path string, inv invocation, a attempt, timeout time.Du
 	if status != "" {
 		return status, rc
 	}
-	status = classify(a.Link.CLI, rc, errText.String()+"\n"+outText.String())
+	text := errText.String() + "\n" + outText.String()
+	status = classify(a.Link.CLI, rc, text)
 	switch status {
 	case runs.OutOfQuota:
 		rc = runs.ExitOutOfQuota
 	case runs.NoPermission:
 		rc = runs.ExitNoPermission
+		if hint := permissionHint(a.Link.CLI, text); hint != "" {
+			fmt.Fprintln(r.Stderr, "panal:", hint)
+			fmt.Fprintln(log, "panal:", hint)
+		}
 	}
 	return status, rc
+}
+
+// permissionHint is a short extra line when classify's status is not
+// enough to say what to do. Empty if there is nothing useful to add.
+func permissionHint(cli, text string) string {
+	if cli == "cursor" && cursorSandboxUnavailable(text) {
+		return "cursor-agent --sandbox is only available on macOS and Linux; on Windows, panal -r passes --auto-review alone"
+	}
+	return ""
+}
+
+func cursorSandboxUnavailable(text string) bool {
+	low := strings.ToLower(text)
+	return strings.Contains(low, "sandbox") && strings.Contains(low, "not available")
 }
 
 func exitCode(cmd *exec.Cmd, err error) int {
@@ -303,21 +326,36 @@ func (r *Runner) note(path, msg string) {
 	}
 }
 
-// saveTask writes the full task next to the run files.
-func (r *Runner) saveTask(base, text string) (string, error) {
-	if err := os.MkdirAll(r.RunsDir, 0o755); err != nil {
-		return "", err
+// allocate picks a unique run id (millisecond time + random) and, when the
+// task has more than one line, exclusive-creates <id>.task.md so two
+// delegates in the same second cannot share a task file.
+func (r *Runner) allocate(t time.Time, text string) (id, taskFile string, err error) {
+	_, multi := firstLine(text)
+	for i := 0; i < 64; i++ {
+		id = runs.NewID(t)
+		if !multi {
+			return id, "", nil
+		}
+		taskFile, err = r.saveTask(id, text)
+		if err == nil {
+			return id, taskFile, nil
+		}
+		if !os.IsExist(err) {
+			return "", "", err
+		}
 	}
-	p := filepath.Join(r.RunsDir, base+".task.md")
-	for n := 2; fileExists(p); n++ {
-		p = filepath.Join(r.RunsDir, fmt.Sprintf("%s-%d.task.md", base, n))
-	}
-	return p, os.WriteFile(p, []byte(text), 0o644)
+	return "", "", fmt.Errorf("could not allocate a unique run id")
+}
+
+// saveTask writes the full task next to the run files as <id>.task.md.
+// It fails with os.ErrExist if that name is taken.
+func (r *Runner) saveTask(id, text string) (string, error) {
+	p := filepath.Join(r.RunsDir, id+".task.md")
+	return p, runs.CreateExclusive(p, []byte(text))
 }
 
 // uniqueID is base, or base-2, base-3… when this agent already has a run
-// file with that ID (the same agent twice in a chain, or two delegations in
-// the same second).
+// file with that ID (the same agent twice in a chain).
 func (r *Runner) uniqueID(base, cli string, used map[string]bool) string {
 	id := base
 	for n := 2; used[id+"-"+cli] || fileExists(filepath.Join(r.RunsDir, id+"-"+cli+".json")); n++ {
@@ -325,6 +363,25 @@ func (r *Runner) uniqueID(base, cli string, used map[string]bool) string {
 	}
 	used[id+"-"+cli] = true
 	return id
+}
+
+// writeNew exclusive-creates the run file. If the name is taken it mints a
+// new id and retries, so two processes that picked the same id do not
+// overwrite each other.
+func (r *Runner) writeNew(run *runs.Run, used map[string]bool) string {
+	for i := 0; i < 16; i++ {
+		p, err := runs.WriteFileExclusive(r.RunsDir, *run)
+		if err == nil {
+			return p
+		}
+		if !os.IsExist(err) {
+			fmt.Fprintln(r.Stderr, "panal: could not write the run file:", err)
+			return p
+		}
+		run.ID = r.uniqueID(runs.NewID(r.Now()), run.Agent, used)
+		run.Log = filepath.Join(r.LogDir, run.ID+"-"+run.Agent+"-"+safeName(run.Model)+".txt")
+	}
+	return r.write(*run)
 }
 
 func fileExists(p string) bool {

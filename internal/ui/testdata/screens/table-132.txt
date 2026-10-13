@@ -1,18 +1,19 @@
- ◆ Panal  live · every 2s · 15:04:05                                                  ■ 2 active ■ 1 no quota/permission ■ 1 at rest
+ ◆ Panal  live · every 2s · 15:04:05                                                  ■ 2 active ■ 1 no quota/permission ■ 2 at rest
    1 Dashboard   2 History   3 Report   4 Timeline   ? Help 
   claude orchestrating · agy working for 18 min · codex out of quota · codex: credits for ~23 days
 
-      ▄▄▄▄▄▄             ▄▄▄▄               ▀    ▀▄       ▄▄▄▄▄▄▄▄▄▄    
-     █▀████▀█           ██▀███           █▀▀▀▀▀▀█         ██▀███████    
-    ▄████████▄         ▄▀▀▀▀▀▀▄          ████████         ██▀▀██████    
-    ▀████████▀█        ▀▀█▀▀█▀▀         ▄████████▄        █▀▀▀▀▀▀▀▀█    
-     ▀ ▀  ▀ ▀           ▀▀  ▀▀           ▀▀    ▀▀          ▄█    █▄     
-      claude             agy              codex            opencode     
- ● orchestrating      ● working     ◐ out of quota          ○ idle      
+      ▄▄▄▄▄▄             ▄▄▄▄               ▀    ▀▄       ▄▄▄▄▄▄▄▄▄▄           ▄▄▄▄       
+     █▀████▀█           ██▀███           █▀▀▀▀▀▀█         ██▀███████          █▀██▀█      
+    ▄████████▄         ▄▀▀▀▀▀▀▄          ████████         ██▀▀██████          ▀████▀      
+    ▀████████▀█        ▀▀█▀▀█▀▀         ▄████████▄        █▀▀▀▀▀▀▀▀█            ▀▀        
+     ▀ ▀  ▀ ▀           ▀▀  ▀▀           ▀▀    ▀▀          ▄█    █▄              ▀        
+      claude             agy              codex            opencode           cursor      
+ ● orchestrating      ● working     ◐ out of quota          ○ idle            ○ idle      
 
   AGENT     STATUS             MODEL                     TIME       QUOTA                             TASK                          
   claude     ● orchestrating   claude-3-7-sonnet         40 min     active                            claude · Orchestrating agent… 
   agy        ● working         gemini-2.5-pro            18 min     5h 62% · week 35%                 agy · Golden screen tests to… 
   codex      ◐ out of quota  ⚠ o3-mini                   55 min     100% · resets 26-Sep 17:19 · 320… codex · Optimize SQL queries… 
   opencode  ○ idle             claude-3-5-sonnet         2 h        Go plan available                 opencode · Waiting for instr… 
+  cursor    ○ idle             composer-2.5              45 min     no live quota                     cursor · Waiting for a deleg… 
  ↑↓  select   enter  detail   ?  help   q  quit

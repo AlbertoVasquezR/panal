@@ -512,10 +512,10 @@ func TestModelKeysAndResize(t *testing.T) {
 func TestHex(t *testing.T) {
 	lipgloss.SetHasDarkBackground(true)
 	for in, want := range map[lipgloss.TerminalColor]string{
-		lipgloss.Color("245"):                                 "#8A8A8A",
-		lipgloss.Color("39"):                                  "#00AFFF",
-		lipgloss.Color("9"):                                   "#FF0000",
-		lipgloss.Color("#d97757"):                             "#D97757",
+		lipgloss.Color("245"):     "#8A8A8A",
+		lipgloss.Color("39"):      "#00AFFF",
+		lipgloss.Color("9"):       "#FF0000",
+		lipgloss.Color("#d97757"): "#D97757",
 		lipgloss.AdaptiveColor{Light: "240", Dark: "#66BB6A"}: "#66BB6A",
 	} {
 		if got := Hex(in); got != want {

@@ -1,4 +1,4 @@
- ◆ Panal  timeline · 15:04:05                         ■ 2 active ■ 1 no quota/permission ■ 1 at rest
+ ◆ Panal  timeline · 15:04:05                         ■ 2 active ■ 1 no quota/permission ■ 2 at rest
    1 Dashboard   2 History   3 Report   4 Timeline   ? Help 
   TIMELINE · today
 
@@ -7,8 +7,9 @@
   agy       ··························································▓▓▓·························
   codex     ···························▚▚▚······························│·························
   opencode  ····························································│·························
+  cursor    ··································███·······················│·························
 
   █ done   ▓ running   ░ out of quota   ▚ failed   │ now
 
-  3 runs · 52 min of agent work · 1 failed · longest: claude, 24 min
+  4 runs · 1 h 2 min of agent work · 1 failed · longest: claude, 24 min
  ←→  other day   esc  back   ?  help   q  quit

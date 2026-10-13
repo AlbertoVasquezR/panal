@@ -25,6 +25,7 @@ func All() []Reader {
 		Current(NewAgy()),
 		Current(NewCodex()),
 		Current(NewOpencode()),
+		Current(NewCursor()),
 	}
 }
 
@@ -153,6 +154,9 @@ func Sources(rs []Reader) []Source {
 		case *Opencode:
 			runDirs(x.Delegate)
 			add(Source{"opencode log", x.LogPath, "OPENCODE_LOG"})
+		case *Cursor:
+			runDirs(x.Delegate)
+			add(Source{"cursor-agent CLI", x.Bin, ""})
 		}
 	}
 	return out

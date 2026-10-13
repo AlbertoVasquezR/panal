@@ -18,7 +18,7 @@ See also: [Delegating](delegate.md) · [Configuration](configuration.md) ·
 ```json
 {
   "version": 2,
-  "id": "20261002-101500",
+  "id": "20261007-123026.847-a3f2c1d0",
   "agent": "codex",
   "model": "gpt-6-luna",
   "effort": "low",
@@ -42,8 +42,8 @@ See also: [Delegating](delegate.md) · [Configuration](configuration.md) ·
 | field | type | meaning |
 |---|---|---|
 | `version` | int | format version, currently `2` |
-| `id` | string | the delegation's start time, `YYYYMMDD-HHMMSS` (`-2`, `-3`… if taken); every attempt of one delegation shares it |
-| `agent` | string | `codex`, `agy` or `opencode` |
+| `id` | string | start time plus a disambiguator: `YYYYMMDD-HHMMSS.mmm-xxxxxxxx` (milliseconds and eight random hex digits). Older files use `YYYYMMDD-HHMMSS` (`-2`, `-3`… if taken). Attempts of one delegation share it |
+| `agent` | string | `codex`, `agy`, `opencode` or `cursor` |
 | `model`, `effort` | string | the chain link's model and effort; empty = the CLI's default (`effort` omitted when empty) |
 | `task` | string | the task's first line |
 | `task_file` | string | path of the full task (`<id>.task.md`) when it has more than one line; omitted otherwise |

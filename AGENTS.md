@@ -6,7 +6,7 @@ file. Read it before making changes.
 ## What it is
 
 Panal (`panal`, Go, Bubble Tea) is a read-only terminal dashboard of what
-opencode, codex, agy and Claude Code as orchestrator are doing, plus
+opencode, codex, agy, cursor-agent and Claude Code as orchestrator are doing, plus
 `panal delegate` (hands tasks to those CLIs with quota fallback) and a
 router (`-c auto`) that learns which agent, model and effort fits each
 task. Overview: `README.md`; guides: `docs/`; structure:
@@ -49,7 +49,7 @@ go install ./cmd/panal                          # installs the binary to ~/go/bi
 | `cmd/panal` | flags and subcommand dispatch |
 | `cmd/preview` | every mascot frame to a PNG |
 | `internal/state` | the shared `Row`, `Status`, `Quota` |
-| `internal/readers` | one reader per agent; read-only; real samples in `testdata/` |
+| `internal/readers` | one reader per agent (claude, agy, codex, opencode, cursor); read-only; real samples in `testdata/` |
 | `internal/live` | live quota queries to the CLIs (no turn, no quota spent) |
 | `internal/runs` | run file format and `~/.panal` paths; `legacy.go` reads the delegar.sh format |
 | `internal/history` | past runs with tokens, cost, ratings, full tasks |
@@ -75,7 +75,7 @@ go install ./cmd/panal                          # installs the binary to ~/go/bi
   and logs, `samples.json`, `feedback.json`, `router-checks.json`,
   `models.json`.
 - **External formats keep their names.** JSON keys, paths and values that
-  belong to codex, agy, opencode or Claude Code are never renamed.
+  belong to codex, agy, opencode, cursor-agent or Claude Code are never renamed.
 - **The legacy delegar.sh format** (Spanish keys) is read only in
   `internal/runs/legacy.go`.
 - **Spanish only where allowed:** `internal/runs/legacy.go`, regex patterns

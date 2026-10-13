@@ -32,7 +32,7 @@ func main() {
 		os.Exit(2)
 	}
 	const px, gap, cols = 6, 2, 8
-	order := []string{"claude", "agy", "codex", "opencode"}
+	order := []string{"claude", "agy", "codex", "opencode", "cursor"}
 	modes := []struct {
 		m      mascots.Mode
 		frames []int
