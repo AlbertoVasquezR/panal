@@ -146,10 +146,38 @@ func MascotMode(e state.Status) mascots.Mode {
 	}
 }
 
+// Corral column widths: the roomy one, and the narrowest that still fits
+// the longest status ("⊘ no permission"), so five mascots fit in 80 columns.
+const corralCol, corralMinCol = 18, 16
+
+// corralColumn is the column width for n mascots in width, or 0 if even
+// the narrow columns do not fit.
+func corralColumn(n, width int) int {
+	switch {
+	case n*corralCol <= width:
+		return corralCol
+	case n*corralMinCol <= width:
+		return corralMinCol
+	}
+	return 0
+}
+
 // Corral draws the mascots side by side, each with its name, status and the
 // matching animation (MascotMode). sel is the highlighted index (-1: none).
 func Corral(rows []state.Row, a Animation, sel int, now time.Time) string {
-	col := lipgloss.NewStyle().Width(18).Align(lipgloss.Center)
+	return corral(rows, a, sel, now, corralCol)
+}
+
+// corralFor is the corral narrowed to fit width, or "" if it cannot.
+func corralFor(rows []state.Row, a Animation, sel int, now time.Time, width int) string {
+	if w := corralColumn(len(rows), width); w > 0 {
+		return corral(rows, a, sel, now, w)
+	}
+	return ""
+}
+
+func corral(rows []state.Row, a Animation, sel int, now time.Time, colW int) string {
+	col := lipgloss.NewStyle().Width(colW).Align(lipgloss.Center)
 	var cols []string
 	for i, f := range rows {
 		s, ok := mascots.All[f.Agent]
@@ -168,11 +196,14 @@ func Corral(rows []state.Row, a Animation, sel int, now time.Time) string {
 		// Per-mascot offset so they don't all blink or jump at once.
 		mode, n, fx := a.offsetBy(i*3).mascot(f, now)
 		// The zzz has a fixed width (3) so the line doesn't wobble as it grows.
+		// In narrow columns it is left out when it would wrap the status;
+		// the sprite still sleeps.
+		status := icon(f.Status) + " " + f.Status.String()
 		zs := dim.Render(fmt.Sprintf(" %-3s", mascots.Zs(mode, n)))
-		if mode != mascots.Sleeping && mode != mascots.Nap {
+		if mode != mascots.Sleeping && mode != mascots.Nap || lipgloss.Width(status)+4 > colW {
 			zs = ""
 		}
-		cols = append(cols, col.Render(s.RenderWith(mode, n, fx)+"\n"+name+"\n"+lipgloss.NewStyle().Foreground(statusColor(f.Status)).Render(icon(f.Status)+" "+f.Status.String())+zs))
+		cols = append(cols, col.Render(s.RenderWith(mode, n, fx)+"\n"+name+"\n"+lipgloss.NewStyle().Foreground(statusColor(f.Status)).Render(status)+zs))
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, cols...)
 }
@@ -825,8 +856,8 @@ func (m Model) View() string {
 	if m.compact {
 		footer := Footer(m.width, "↑↓", "select", "enter", "detail", "?", "help", "q", "quit")
 		var body string
-		if m.showMascots && len(m.rows)*18 <= m.width {
-			corral := Corral(m.rows, m.animation(), sel, m.now) + "\n\n" + compactTable(m.rows, sel, m.width, m.now)
+		if c := corralFor(m.rows, m.animation(), sel, m.now, m.width); m.showMascots && c != "" {
+			corral := c + "\n\n" + compactTable(m.rows, sel, m.width, m.now)
 			if lipgloss.Height(head+corral+offs+footer) <= height {
 				body = corral
 			} else {
