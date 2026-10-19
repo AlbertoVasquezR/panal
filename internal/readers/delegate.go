@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/AlbertoVasquezR/panal/internal/activity"
@@ -19,7 +20,15 @@ type Delegate struct {
 	Dirs     []string // run directories, read in order (runs.Dirs())
 	PIDAlive func(int) bool
 	Now      func() time.Time
+
+	mu        sync.Mutex
+	deadSince map[string]time.Time // running run file → when its pid was first seen gone
 }
+
+// closeAfter is how long a running run's pid must stay gone before its
+// file is rewritten as failed. The delegate writes the final record right
+// after the agent exits; waiting keeps a dashboard from racing it.
+const closeAfter = time.Minute
 
 // NewDelegate creates a reader for the given agent.
 func NewDelegate(agent string) *Delegate {
@@ -79,7 +88,7 @@ func (d *Delegate) Read() state.Row {
 		}
 
 		if st.Status == runs.Running && !f.Legacy {
-			if closed, ok := runs.CloseIfDead(f.Path, st, pidAliveFn, nowFn()); ok {
+			if closed, ok := d.closeIfDead(f.Path, st, pidAliveFn, nowFn()); ok {
 				st = closed
 			}
 		}
@@ -157,6 +166,30 @@ func (d *Delegate) Read() state.Row {
 	}
 
 	return row
+}
+
+// closeIfDead persists a dead running run as failed once its pid has been
+// gone for closeAfter; until then the row still shows it as interrupted.
+func (d *Delegate) closeIfDead(path string, st runs.Run, alive func(int) bool, now time.Time) (runs.Run, bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if st.PID == 0 || alive(st.PID) {
+		delete(d.deadSince, path)
+		return st, false
+	}
+	first, seen := d.deadSince[path]
+	if !seen {
+		if d.deadSince == nil {
+			d.deadSince = map[string]time.Time{}
+		}
+		d.deadSince[path] = now
+		return st, false
+	}
+	if now.Sub(first) < closeAfter {
+		return st, false
+	}
+	delete(d.deadSince, path)
+	return runs.CloseIfDead(path, alive, now)
 }
 
 // latestActivity is the most recent change among what each CLI writes while

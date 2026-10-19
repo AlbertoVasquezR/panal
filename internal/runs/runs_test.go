@@ -3,6 +3,7 @@ package runs
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -185,11 +186,11 @@ func TestCloseIfDead(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Date(2026, 10, 7, 12, 31, 0, 0, time.UTC)
-	got, wrote := CloseIfDead(path, r, func(int) bool { return true }, now)
+	got, wrote := CloseIfDead(path, func(int) bool { return true }, now)
 	if wrote || got.Status != Running {
 		t.Fatalf("alive pid: wrote=%v %+v", wrote, got)
 	}
-	got, wrote = CloseIfDead(path, r, func(int) bool { return false }, now)
+	got, wrote = CloseIfDead(path, func(int) bool { return false }, now)
 	if !wrote || got.Status != Failed || got.RC == nil || *got.RC != ExitFailed {
 		t.Fatalf("dead pid: wrote=%v %+v", wrote, got)
 	}
@@ -198,7 +199,67 @@ func TestCloseIfDead(t *testing.T) {
 		t.Fatalf("file: %v %+v", err, onDisk)
 	}
 	r.PID = 0
-	if _, wrote := CloseIfDead(path, r, func(int) bool { return false }, now); wrote {
+	if _, err := WriteFile(dir, r); err != nil {
+		t.Fatal(err)
+	}
+	if _, wrote := CloseIfDead(path, func(int) bool { return false }, now); wrote {
 		t.Fatal("pid 0 should be left alone")
+	}
+}
+
+func TestCloseIfDeadKeepsTheDelegatesFinalRecord(t *testing.T) {
+	dir := t.TempDir()
+	r := Run{ID: "20261019-000000.000-aaaaaaaa", Agent: "cursor", Status: Running, PID: 99, Start: "2026-10-19T00:00:00Z"}
+	path, err := WriteFile(dir, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A dashboard saw it running; then the delegate closed it.
+	r.Status = Done
+	if _, err := WriteFile(dir, r); err != nil {
+		t.Fatal(err)
+	}
+	got, wrote := CloseIfDead(path, func(int) bool { return false }, time.Now())
+	if wrote || got.Status != Done {
+		t.Fatalf("a closed run was rewritten: wrote=%v status=%s", wrote, got.Status)
+	}
+	onDisk, _ := ReadFile(path)
+	if onDisk.Status != Done {
+		t.Fatalf("on disk: %s", onDisk.Status)
+	}
+}
+
+func TestWriteFileConcurrentWritersLeaveNoTemp(t *testing.T) {
+	dir := t.TempDir()
+	r := Run{ID: "20261019-000000.000-bbbbbbbb", Agent: "cursor", Status: Running, Start: "2026-10-19T00:00:00Z"}
+	var wg sync.WaitGroup
+	errs := make(chan error, 16)
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := WriteFile(dir, r); err != nil {
+				errs <- err
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Errorf("concurrent WriteFile: %v", err)
+	}
+	ents, _ := os.ReadDir(dir)
+	if len(ents) != 1 {
+		var names []string
+		for _, e := range ents {
+			names = append(names, e.Name())
+		}
+		t.Fatalf("want only the run file, got %v", names)
+	}
+	if runtime.GOOS == "windows" {
+		return
+	}
+	if st, err := os.Stat(filepath.Join(dir, ents[0].Name())); err != nil || st.Mode().Perm() != 0o644 {
+		t.Fatalf("mode: %v %v", st.Mode(), err)
 	}
 }

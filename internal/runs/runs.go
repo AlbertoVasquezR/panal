@@ -173,11 +173,29 @@ func WriteFile(dir string, r Run) (string, error) {
 		return "", err
 	}
 	path := runPath(dir, r)
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	// A temp name of its own per call: the delegate and a dashboard may
+	// rewrite the same run at once.
+	f, err := os.CreateTemp(dir, filepath.Base(path)+".*.tmp")
+	if err != nil {
 		return "", err
 	}
-	return path, os.Rename(tmp, path)
+	tmp := f.Name()
+	_, werr := f.Write(data)
+	cerr := f.Close()
+	if werr == nil {
+		werr = cerr
+	}
+	if werr == nil {
+		werr = os.Chmod(tmp, 0o644)
+	}
+	if werr == nil {
+		werr = os.Rename(tmp, path)
+	}
+	if werr != nil {
+		os.Remove(tmp)
+		return "", werr
+	}
+	return path, nil
 }
 
 // WriteFileExclusive creates dir/<ID>-<agent>.json and fails with
@@ -212,11 +230,16 @@ func CreateExclusive(path string, data []byte) error {
 	return cerr
 }
 
-// CloseIfDead rewrites a still-running run as failed when its process is
-// gone, so the record does not stay "running" forever. pid 0 is left
-// alone (legacy files). It returns the run and whether the file changed.
-func CloseIfDead(path string, r Run, alive func(int) bool, now time.Time) (Run, bool) {
-	if r.Status != Running || r.PID == 0 || alive == nil || alive(r.PID) {
+// CloseIfDead rewrites the run at path as failed when it is still running
+// and its process is gone, so the record does not stay "running" forever.
+// It reads the file itself, so a record the delegate has already closed
+// is never overwritten with a stale copy; callers should still wait a
+// while after first seeing the pid gone, since the delegate writes its
+// final record only after the agent exits. pid 0 is left alone (legacy
+// files). It returns the run as it is now and whether the file changed.
+func CloseIfDead(path string, alive func(int) bool, now time.Time) (Run, bool) {
+	r, err := ReadFile(path)
+	if err != nil || r.Status != Running || r.PID == 0 || alive == nil || alive(r.PID) {
 		return r, false
 	}
 	if now.IsZero() {
