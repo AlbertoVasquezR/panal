@@ -36,16 +36,18 @@ func (t *tail) String() string {
 	return string(t.b)
 }
 
-// codexEvents turns codex's JSONL events into one readable line each for the
-// terminal (the raw events go to <log>.jsonl), and keeps the messages of
-// error events for classify.
-type codexEvents struct {
+// jsonEvents turns a CLI's JSONL events (codex --json, cursor-agent
+// stream-json) into one readable line each for the terminal (the raw
+// events go to <log>.jsonl), and keeps the messages of error events for
+// classify.
+type jsonEvents struct {
+	cli    string
 	out    io.Writer
 	errors *tail
 	buf    []byte
 }
 
-func (c *codexEvents) Write(p []byte) (int, error) {
+func (c *jsonEvents) Write(p []byte) (int, error) {
 	c.buf = append(c.buf, p...)
 	for {
 		i := bytes.IndexByte(c.buf, '\n')
@@ -58,16 +60,19 @@ func (c *codexEvents) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func (c *codexEvents) line(l []byte) {
+func (c *jsonEvents) line(l []byte) {
 	if len(l) == 0 {
 		return
 	}
+	// message and error are a string in some events and an object in
+	// others (cursor's assistant message), so they are decoded later.
 	var ev struct {
-		Type    string `json:"type"`
-		Message string `json:"message"`
-		Error   struct {
-			Message string `json:"message"`
-		} `json:"error"`
+		Type    string          `json:"type"`
+		Subtype string          `json:"subtype"`
+		IsError bool            `json:"is_error"`
+		Result  string          `json:"result"`
+		Message json.RawMessage `json:"message"`
+		Error   json.RawMessage `json:"error"`
 	}
 	if json.Unmarshal(l, &ev) != nil {
 		io.WriteString(c.out, string(l)+"\n") // not an event: show it as is
@@ -75,17 +80,38 @@ func (c *codexEvents) line(l []byte) {
 	}
 	switch {
 	case ev.Type == "error" || ev.Type == "turn.failed":
-		msg := strings.TrimSpace(ev.Message + " " + ev.Error.Message)
-		c.errors.Write([]byte(msg + "\n"))
-		io.WriteString(c.out, "codex error: "+msg+"\n")
+		c.failed(eventText(ev.Message) + " " + eventText(ev.Error))
+	case ev.Type == "result" && (ev.IsError || strings.HasPrefix(ev.Subtype, "error")):
+		c.failed(ev.Result + " " + eventText(ev.Error))
 	case ev.Type == "item.completed":
 		// activity already knows how to describe an event in a few words.
 		if s, _ := activity.FromCodex(l); s != "" {
 			io.WriteString(c.out, "  "+s+"\n")
 		}
-	case ev.Type == "tool_call" || ev.Type == "assistant" || ev.Type == "result":
+	case ev.Type == "tool_call" || ev.Type == "assistant":
 		if s, _ := activity.FromCursor(l); s != "" {
 			io.WriteString(c.out, "  "+s+"\n")
 		}
 	}
+}
+
+func (c *jsonEvents) failed(msg string) {
+	msg = strings.TrimSpace(msg)
+	c.errors.Write([]byte(msg + "\n"))
+	io.WriteString(c.out, c.cli+" error: "+msg+"\n")
+}
+
+// eventText is a JSON string, or the "message" of a JSON object; else "".
+func eventText(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	var o struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(raw, &o) == nil {
+		return o.Message
+	}
+	return ""
 }

@@ -200,7 +200,7 @@ func (r *Runner) execute(path string, inv invocation, a attempt, timeout time.Du
 			return runs.Failed, runs.ExitFailed
 		}
 		defer jf.Close()
-		cmd.Stdout = io.MultiWriter(jf, &codexEvents{out: stdout, errors: errText})
+		cmd.Stdout = io.MultiWriter(jf, &jsonEvents{cli: a.Link.CLI, out: stdout, errors: errText})
 	} else {
 		cmd.Stdout = io.MultiWriter(log, stdout, outText)
 	}

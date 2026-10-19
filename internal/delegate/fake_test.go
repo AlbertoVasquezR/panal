@@ -76,6 +76,11 @@ func fakeCLI(args []string) int {
 		}
 		fmt.Fprintln(os.Stderr, "Not inside a trusted directory and --skip-git-repo-check was not specified.")
 		return 1
+	case "resultquota":
+		// The refusal only in the stream-json result, nothing on stderr.
+		fmt.Println(`{"type":"system","subtype":"init","model":"composer-2.5"}`)
+		fmt.Println(`{"type":"result","subtype":"error","is_error":true,"result":"You've hit your usage limit for this billing cycle."}`)
+		return 1
 	case "quota":
 		switch cli {
 		case "codex":

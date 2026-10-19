@@ -258,6 +258,62 @@ func TestCursorQuotaFallsBack(t *testing.T) {
 	}
 }
 
+func TestCursorQuotaInResultEventFallsBack(t *testing.T) {
+	e := newEnv(t, []string{"cursor", "agy"}, map[string]string{"cursor": "resultquota", "agy": "ok"})
+	code, res := e.run("Add a test", "cursor agy")
+	if code != 0 || !slices.Equal(statuses(res), []runs.Status{runs.OutOfQuota, runs.Done}) {
+		t.Fatalf("code %d, %v\n%s", code, statuses(res), e.out.String())
+	}
+	if !strings.Contains(e.out.String(), "cursor error: You've hit your usage limit") {
+		t.Errorf("the refusal should be shown as a cursor error:\n%s", e.out.String())
+	}
+}
+
+func TestCursorEventsAreReadableOnTheTerminal(t *testing.T) {
+	e := newEnv(t, []string{"cursor"}, map[string]string{"cursor": "ok"})
+	if code, _ := e.run("Add a test", "cursor"); code != 0 {
+		t.Fatalf("code %d\n%s", code, e.out.String())
+	}
+	out := e.out.String()
+	if strings.Contains(out, `{"type"`) {
+		t.Errorf("raw stream-json on the terminal:\n%s", out)
+	}
+	for _, want := range []string{"«working on the task»", "$ go test ./..."} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestJSONEventsLabelsErrorsWithTheirCLI(t *testing.T) {
+	cases := []struct {
+		cli, line, want string
+	}{
+		{"codex", `{"type":"error","message":"You've hit your usage limit."}`, "codex error: You've hit your usage limit."},
+		{"codex", `{"type":"turn.failed","error":{"message":"usage_limit_reached"}}`, "codex error: usage_limit_reached"},
+		{"cursor", `{"type":"result","subtype":"error","is_error":true,"result":"Not logged in"}`, "cursor error: Not logged in"},
+		{"cursor", `{"type":"error","error":{"message":"boom"}}`, "cursor error: boom"},
+	}
+	for _, c := range cases {
+		var out strings.Builder
+		errs := newTail(1 << 10)
+		ev := &jsonEvents{cli: c.cli, out: &out, errors: errs}
+		ev.Write([]byte(c.line + "\n"))
+		if strings.TrimSpace(out.String()) != c.want {
+			t.Errorf("%s: got %q, want %q", c.line, out.String(), c.want)
+		}
+		if !strings.Contains(errs.String(), strings.TrimPrefix(c.want, c.cli+" error: ")) {
+			t.Errorf("%s: classify would not see it: %q", c.line, errs.String())
+		}
+	}
+	var out strings.Builder
+	ev := &jsonEvents{cli: "cursor", out: &out, errors: newTail(1 << 10)}
+	ev.Write([]byte(`{"type":"result","subtype":"success","is_error":false,"result":"All done."}` + "\n"))
+	if out.Len() != 0 {
+		t.Errorf("a successful result is not an error: %q", out.String())
+	}
+}
+
 func TestTalkingAboutRateLimitsIsNotOutOfQuota(t *testing.T) {
 	e := newEnv(t, []string{"opencode"}, map[string]string{"opencode": "talk"})
 	if code, res := e.run("x", "opencode"); code != 0 || res[0].Status != runs.Done {
