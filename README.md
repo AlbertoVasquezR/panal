@@ -248,7 +248,7 @@ Every key and variable: [docs/configuration.md](docs/configuration.md).
 | **codex** | `panal delegate` runs and logs (activity, tests); `rate_limits`, tokens and credits from `~/.codex/sessions`; live quota from `codex app-server` (no turn) |
 | **agy** | `panal delegate` runs and logs, including the quota summary in its log; live quota from `agy -p /usage` (no turn) |
 | **opencode** | `panal delegate` runs; quota errors in its log; `opencode.db` (read-only); Go plan usage from opencode's usage endpoint |
-| **cursor** (`cursor-agent` / `agent`) | `panal delegate` runs and their stream-json logs (status, model, last action); the CLI on `PATH` or `%LOCALAPPDATA%\cursor-agent` for `-doctor`. No live quota: cursor-agent has no usage query that spends nothing (`/usage` is interactive only). `-r` is `--auto-review` (plus `--sandbox enabled` on macOS/Linux only; Windows has no CLI sandbox) |
+| **cursor** (`cursor-agent`, or `agent` inside a Cursor CLI install) | `panal delegate` runs and their stream-json logs (status, model, last action); the CLI on `PATH` or `%LOCALAPPDATA%\cursor-agent` for `-doctor`. No live quota: cursor-agent has no usage query that spends nothing (`/usage` is interactive only). `-r` is `--auto-review` (plus `--sandbox enabled` on macOS/Linux only; Windows has no CLI sandbox) |
 
 ## Docs
 

@@ -93,7 +93,10 @@ sends it only to opencode.ai.
 
 The cursor card comes from runs launched with `panal delegate`. Panal
 looks up the CLI as `cursor-agent`, then `agent`, then (on Windows) the
-installer shims under `%LOCALAPPDATA%\cursor-agent`. It never writes to
+installer shims under `%LOCALAPPDATA%\cursor-agent`. `agent` is a
+common name, so it only counts when its real path (after symlinks) is
+inside a Cursor CLI install (a `cursor-agent` or `cursor-cli`
+directory); Panal does not run it to check. It never writes to
 cursor-agent's own files.
 
 There is no live quota. cursor-agent can list models (`cursor-agent

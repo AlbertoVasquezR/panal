@@ -12,7 +12,7 @@ See also: [Delegating](delegate.md) · [Configuration](configuration.md) ·
 `panal delegate` writes one JSON file per attempt to `~/.panal/runs`
 (`PANAL_RUNS`), named `<id>-<agent>.json`. It is written with status
 `running` before the agent starts and rewritten (atomically, through a
-`.tmp` file) when it ends. The format is defined in one place,
+temp file of its own) when it ends. The format is defined in one place,
 `internal/runs/runs.go`; everything else in Panal reads runs through it.
 
 ```json
@@ -49,7 +49,7 @@ See also: [Delegating](delegate.md) · [Configuration](configuration.md) ·
 | `task_file` | string | path of the full task (`<id>.task.md`) when it has more than one line; omitted otherwise |
 | `dir` | string | absolute directory the agent worked in |
 | `read_only` | bool | `-r` |
-| `pid` | int | the `panal delegate` process |
+| `pid` | int | the agent CLI's process, set once it has started |
 | `log` | string | the attempt's log file |
 | `start`, `end` | string | RFC 3339; `end` omitted while running |
 | `status` | string | `running`, `done`, `failed`, `out_of_quota`, `no_permission`, `timeout`, `interrupted`, `skipped` |
