@@ -9,6 +9,7 @@ package config
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,6 +31,30 @@ var Known = []string{"agy", "codex", "cursor", "opencode"}
 // %LOCALAPPDATA%\cursor-agent.
 var Bins = map[string][]string{
 	"cursor": {"cursor-agent", "agent"},
+}
+
+// verifyBin are PATH names too generic to trust on their own: a hit only
+// counts if the check accepts its path. Nothing is run to check it.
+var verifyBin = map[string]func(path string) bool{
+	"agent": isCursorInstall,
+}
+
+// isCursorInstall: path, after following symlinks, lies inside a Cursor
+// CLI install. The installer puts the binary under
+// ~/.local/share/cursor-agent/versions/… and links agent and cursor-agent
+// to it; Homebrew's cask is cursor-cli; Windows uses
+// %LOCALAPPDATA%\cursor-agent.
+func isCursorInstall(path string) bool {
+	if r, err := filepath.EvalSymlinks(path); err == nil {
+		path = r
+	}
+	for _, el := range strings.FieldsFunc(filepath.ToSlash(path), func(r rune) bool { return r == '/' }) {
+		el = strings.ToLower(el)
+		if strings.Contains(el, "cursor-agent") || strings.Contains(el, "cursor-cli") {
+			return true
+		}
+	}
+	return false
 }
 
 // FileName is the config file's name inside runs.Home() (~/.panal).
@@ -328,6 +353,9 @@ func LookWith(look func(string) (string, error), name string) (string, error) {
 	var first error
 	for _, n := range names {
 		p, err := look(n)
+		if err == nil && verifyBin[n] != nil && !verifyBin[n](p) {
+			err = fmt.Errorf("%s at %s is not the Cursor CLI", n, p)
+		}
 		if err == nil {
 			return p, nil
 		}
