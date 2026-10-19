@@ -83,7 +83,7 @@ func codexArgs(a attempt) invocation {
 func agyArgs(a attempt) invocation {
 	prompt := a.Task
 	inv := invocation{}
-	if len(prompt) > maxArgvTask {
+	if len(prompt) > maxArgvTask || flagLike(prompt) {
 		if a.TaskFile == "" {
 			return invocation{NeedsTaskFile: true}
 		}
@@ -109,8 +109,8 @@ func agyArgs(a attempt) invocation {
 // opencodeArgs: `opencode run <message>` runs one turn in the current
 // directory. On Windows opencode is usually an npm .cmd shim, which goes
 // through cmd.exe: a task with quotes, %, &, |, <, >, ^, ! or line breaks
-// does not survive that, so such a task is attached with --file and the
-// message only points to it. Model: provider/model, with #variant for the
+// does not survive that, so such a task (or one that starts with "-") is
+// attached with --file and the message only points to it. Model: provider/model, with #variant for the
 // effort. Writes: --auto (approve what is not explicitly denied). Read-only:
 // the built-in plan agent, without --auto.
 //
@@ -130,7 +130,7 @@ func opencodeArgs(a attempt) invocation {
 	} else {
 		args = append(args, "--auto")
 	}
-	if shellSafe(a.Task) && len(a.Task) <= 2000 {
+	if shellSafe(a.Task) && !flagLike(a.Task) && len(a.Task) <= 2000 {
 		return invocation{Args: append(args, a.Task)}
 	}
 	if a.TaskFile == "" {
@@ -171,7 +171,7 @@ func cursorArgs(a attempt) invocation {
 	} else {
 		args = append(args, "--force")
 	}
-	if shellSafe(a.Task) && len(a.Task) <= maxArgvTask {
+	if shellSafe(a.Task) && !flagLike(a.Task) && len(a.Task) <= maxArgvTask {
 		return invocation{Args: append(args, a.Task), JSONEvents: true}
 	}
 	if a.TaskFile == "" {
@@ -197,4 +197,11 @@ func cursorReadOnlyFlags(goos string) []string {
 // shellSafe: s can go through cmd.exe as one quoted argument unchanged.
 func shellSafe(s string) bool {
 	return !strings.ContainsAny(s, "\"%&|<>^!\r\n")
+}
+
+// flagLike: the CLI could parse s as one of its own options (a task such
+// as "--force …" would turn -r into a writing run). Such a task goes
+// through the task file instead of the command line.
+func flagLike(s string) bool {
+	return strings.HasPrefix(strings.TrimLeft(s, " \t"), "-")
 }

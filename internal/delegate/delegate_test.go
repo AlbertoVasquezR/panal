@@ -467,6 +467,36 @@ func TestReadOnlyArgs(t *testing.T) {
 	}
 }
 
+func TestDashLeadingTaskNeverReachesArgv(t *testing.T) {
+	for _, task := range []string{"--force delete the build dir", "-r", "  --yolo do it"} {
+		for _, cli := range []string{"agy", "opencode", "cursor"} {
+			a := attempt{Link: Link{CLI: cli}, Task: task, Dir: "D", ReadOnly: true, Log: "L"}
+			if inv := agents[cli].build(a); !inv.NeedsTaskFile {
+				t.Errorf("%s %q: should ask for a task file, got %q", cli, task, inv.Args)
+			}
+			a.TaskFile = "/runs/x.task.md"
+			inv := agents[cli].build(a)
+			if !inv.NeedsTaskFile {
+				t.Errorf("%s %q: should use the task file", cli, task)
+			}
+			for _, arg := range inv.Args {
+				if strings.TrimSpace(arg) == strings.TrimSpace(task) || strings.HasPrefix(arg, task) {
+					t.Errorf("%s %q: task on the command line: %q", cli, task, inv.Args)
+				}
+			}
+			for _, w := range []string{"--force", "--yolo", "--auto", "--dangerously-skip-permissions"} {
+				if slices.Contains(inv.Args, w) {
+					t.Errorf("%s %q: read-only args gained %s: %q", cli, task, w, inv.Args)
+				}
+			}
+		}
+	}
+	a := attempt{Link: Link{CLI: "cursor"}, Task: "fix the -v flag", Dir: "D", Log: "L"}
+	if inv := agents["cursor"].build(a); inv.NeedsTaskFile || inv.Args[len(inv.Args)-1] != a.Task {
+		t.Errorf("a dash inside the task is fine on argv: %q", inv.Args)
+	}
+}
+
 func TestCursorReadOnlyFlags(t *testing.T) {
 	cases := []struct {
 		goos string
