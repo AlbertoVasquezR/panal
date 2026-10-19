@@ -171,17 +171,13 @@ func cursorArgs(a attempt) invocation {
 	} else {
 		args = append(args, "--force")
 	}
-	inv := invocation{JSONEvents: true}
 	if shellSafe(a.Task) && len(a.Task) <= maxArgvTask {
 		return invocation{Args: append(args, a.Task), JSONEvents: true}
 	}
 	if a.TaskFile == "" {
 		return invocation{NeedsTaskFile: true, JSONEvents: true}
 	}
-	args = append(args, fileTaskPrompt(a.TaskFile))
-	inv.Args = args
-	inv.NeedsTaskFile = true
-	return inv
+	return invocation{Args: append(args, fileTaskPrompt(a.TaskFile)), NeedsTaskFile: true, JSONEvents: true}
 }
 
 func fileTaskPrompt(path string) string {
