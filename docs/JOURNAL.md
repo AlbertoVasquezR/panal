@@ -16,6 +16,49 @@ written; the current names are in the README and `docs/`.
 
 ---
 
+## 2026-10-07: cursor-agent as a first-class agent
+
+- New reader `internal/readers/cursor.go`: status, model, task and last
+  action from `panal delegate` run files; stream-json activity from
+  `<log>.jsonl`. No live quota: cursor-agent has no usage query that
+  spends nothing (`/usage` is interactive only). `-doctor` lists the
+  resolved CLI path (`cursor-agent`, then `agent`, then the Windows
+  installer dir `%LOCALAPPDATA%\cursor-agent`).
+- `panal delegate` runs
+  `cursor-agent -p --output-format stream-json --trust --workspace DIR`
+  with `--force` (writes; not confined to `-d`) or
+  `--auto-review` (`-r`; `--sandbox enabled` only on macOS/Linux — the
+  CLI refuses sandbox on Windows). `--mode plan` is too restrictive
+  (it rejects `hostname`). Effort becomes `--model id[effort=…]`.
+  Chain name is `cursor`.
+- Models: `cursor-agent models`, fallback `--list-models`. Parser
+  accepts the live Windows listing (`id - Display name`, header,
+  annotations, ANSI, CRLF), id-per-line (optional tab + name), and JSON.
+  On Windows the `.cmd` shim is run through `cmd.exe /c`.
+- Dashboard: cyan `#38BDF8` diamond mascot; fifth card after opencode.
+  Five cards use 3-across before 2-across so they don't stack 2+2+1 at
+  100/132 columns. Four-card layout is unchanged.
+- `-off` / `off =` / `config.Known` include cursor. Default chain appends
+  it when the CLI is installed.
+
+- agy `delegate -r` that auto-denies a tool in print mode (exit 0,
+  "headless mode cannot prompt … auto-denied") is `no_permission`, not
+  `done`. Separate commit.
+
+Verified on a Windows box with cursor-agent logged in: `-p` /
+`--print`, `--output-format`, `--auto-review`, `--force`/`--yolo`,
+`--sandbox`, `--trust`, `--workspace`, `--model`, `--list-models`,
+`status`. `--mode plan` rejected a harmless `hostname`. `--sandbox
+enabled` on Windows exits 1 (`Sandbox mode is enabled but not
+available`). Live `cursor-agent models` is `id - Display name`.
+Not verified here: quota-refusal wording.
+
+- Run ids are `YYYYMMDD-HHMMSS.mmm-xxxxxxxx` (milliseconds + random). The
+  first write of a run file and of `<id>.task.md` uses `O_EXCL` and
+  retries, so two `delegate` in the same second cannot share an id or
+  task file. A `running` record whose pid is gone is rewritten `failed`
+  on the next dashboard read. Old second-resolution ids still parse.
+
 ## 2026-10-03: pets inside Claude Code
 
 - `panal pet`: one mascot for a split pane next to any CLI, plus `-json` /

@@ -1,0 +1,9 @@
+auto	Auto
+composer-2.5	Composer 2.5
+composer-2.5-fast	Composer 2.5 Fast
+grok-4.7	Grok 4.7
+grok-4.6	Grok 4.6
+grok-4.5	Grok 4.5
+claude-4.5-sonnet	Claude 4.5 Sonnet
+claude-4.6-opus	Claude 4.6 Opus
+gpt-5.4	GPT-5.4

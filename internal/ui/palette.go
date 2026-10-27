@@ -15,6 +15,7 @@ var (
 		"agy":      "#9575CD",
 		"codex":    "#69F0AE",
 		"opencode": "#FFD54F",
+		"cursor":   "#38BDF8",
 	}
 
 	// The dashboard's main brand ("◆ Panal").

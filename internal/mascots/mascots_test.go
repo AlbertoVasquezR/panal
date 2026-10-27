@@ -11,8 +11,8 @@ var modes = []Mode{Idle, Working, Sleeping, Stuck, Nap, Celebrate, Scared, WakeU
 // A badly drawn frame does not crash: it paints a gap or a default color and
 // nobody notices. This checks every frame of every mode of every mascot.
 func TestFramesWellFormed(t *testing.T) {
-	if len(All) != 4 {
-		t.Fatalf("expected 4 mascots, there are %d", len(All))
+	if len(All) != 5 {
+		t.Fatalf("expected 5 mascots, there are %d", len(All))
 	}
 	for name, s := range All {
 		if len(s.Work) < 4 {

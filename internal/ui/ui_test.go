@@ -97,6 +97,7 @@ func TestHistory_FormatAndDuration(t *testing.T) {
 
 func TestModel_ToggleHistory(t *testing.T) {
 	m := New(nil, 2*time.Second)
+	m.runs = []history.Run{{Stamp: "1", Agent: "codex", Status: runDone}}
 	if m.inHistory {
 		t.Fatalf("should not start in history")
 	}

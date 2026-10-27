@@ -62,9 +62,10 @@ func TestNoColorRemovesMascots(t *testing.T) {
 	defer func() { nowFn = oldNow }()
 	ls := setupTestEnv(t, fixedTime)
 
-	with := CaptureView(ls, 132, "")
+	t.Setenv("NO_COLOR", "")
+	with := CaptureView(ls, 160, "")
 	t.Setenv("NO_COLOR", "1")
-	without := CaptureView(ls, 132, "")
+	without := CaptureView(ls, 160, "")
 	if !strings.Contains(with, "▀") || strings.Contains(without, "▀") {
 		t.Fatal("with NO_COLOR the cards should have no mascots (half blocks)")
 	}

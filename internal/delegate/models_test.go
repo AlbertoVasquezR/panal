@@ -30,6 +30,7 @@ func fakeCLIs(t *testing.T) models.Runner {
 	out := map[string]string{
 		"agy models":              read("agy-models.txt"),
 		"codex debug models":      read("codex-debug-models.json"),
+		"cursor models":           read("cursor-models.txt"),
 		"opencode api model.list": `{"location":{"directory":"C:\\Users\\someone"},"data":[]}`,
 		"opencode models":         "",
 	}
@@ -210,15 +211,15 @@ func TestModelsCommand(t *testing.T) {
 func TestPoolAutoNeedsNoInstalledCheckOfItsOwn(t *testing.T) {
 	// A CLI that is not installed has no models in the catalog, so an auto
 	// pool never names it.
-	notCodex := func(n string) (string, error) {
-		if n == "codex" {
-			return "", exec.ErrNotFound
+	onlyAgy := func(n string) (string, error) {
+		if n == "agy" {
+			return "/bin/agy", nil
 		}
-		return "/bin/" + n, nil
+		return "", exec.ErrNotFound
 	}
-	cat := models.Refresh(context.Background(), fakeCLIs(t), notCodex, models.Catalog{}, models.CLIs, time.Second, time.Now())
+	cat := models.Refresh(context.Background(), fakeCLIs(t), onlyAgy, models.Catalog{}, models.CLIs, time.Second, time.Now())
 	rt := routing{Catalog: func(bool) models.Catalog { return cat }}
-	pool, info, err := rt.resolvePool("auto", "PANAL_POOL", config.Conf{}, notCodex, true)
+	pool, info, err := rt.resolvePool("auto", "PANAL_POOL", config.Conf{}, onlyAgy, true)
 	if err != nil || !info.Auto {
 		t.Fatal(err)
 	}

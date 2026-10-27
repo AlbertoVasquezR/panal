@@ -38,7 +38,8 @@ func TestRateRunsFromHistory(t *testing.T) {
 		t.Fatalf("running run rated: %q", m.alert)
 	}
 
-	// The codex run (third) was rated bad: its detail says so, with the note.
+	// Newest first: running agy, claude, cursor, then the codex run (rated bad).
+	m, _ = key(m, "down")
 	m, _ = key(m, "down")
 	m, _ = key(m, "down")
 	m, _ = key(m, "enter")

@@ -78,6 +78,12 @@ func (d *Delegate) Read() state.Row {
 			continue
 		}
 
+		if st.Status == runs.Running && !f.Legacy {
+			if closed, ok := runs.CloseIfDead(f.Path, st, pidAliveFn, nowFn()); ok {
+				st = closed
+			}
+		}
+
 		if newest == nil || start.After(newestStart) {
 			newest = &st
 			newestStart = start
@@ -203,7 +209,7 @@ func belongsToAgent(fileName, agent string) bool {
 	if strings.Contains(fileName, agent) {
 		return true
 	}
-	others := []string{"agy", "codex", "opencode", "claude"}
+	others := []string{"agy", "codex", "opencode", "claude", "cursor"}
 	for _, other := range others {
 		if other != agent && strings.Contains(fileName, other) {
 			return false

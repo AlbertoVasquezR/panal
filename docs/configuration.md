@@ -52,7 +52,7 @@ models       = codex:gpt-6-luna* agy:gemini-3.8-flash-*
 
 | key | default | meaning | wins over it |
 |---|---|---|---|
-| `chain` | every installed one of codex, agy, opencode | `panal delegate`'s fallback chain, `cli:model[:effort] ...`, or `auto` | `-c`, `PANAL_CHAIN` |
+| `chain` | every installed one of codex, agy, opencode, cursor | `panal delegate`'s fallback chain, `cli:model[:effort] ...`, or `auto` | `-c`, `PANAL_CHAIN` |
 | `pool` | the chain, else every installed CLI | the arms the router picks among, cheapest first, or `auto` (the discovered models). With a pool and no chain, `auto` is the default | `-p` (route), `PANAL_POOL` |
 | `router` | unset | an external classifier command (no shell): see [Router](router.md#plug-in-your-own-classifier) | `PANAL_ROUTER` |
 | `models` | every discovered model | allow patterns for `pool = auto`: see [Models](models.md#pool--auto-and-the-rules) | |

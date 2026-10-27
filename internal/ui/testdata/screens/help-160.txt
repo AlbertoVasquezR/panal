@@ -1,4 +1,4 @@
- ◆ Panal  help · 15:04:05                                                                                         ■ 2 active ■ 1 no quota/permission ■ 1 at rest
+ ◆ Panal  help · 15:04:05                                                                                         ■ 2 active ■ 1 no quota/permission ■ 2 at rest
 
  HELP                                                                                                                                 1–34 of 121 · ↑↓ for more 
 
@@ -15,7 +15,7 @@
     t          toggle between cards and compact table
     m          show or hide mascots
     p          pet the selected agent's mascot
-    r          ask codex, agy, claude and opencode for their quota now
+    r          ask codex, agy, claude and opencode for their quota now (cursor has none)
     ?          open this help
     q          quit
 
@@ -34,6 +34,6 @@
     g/G / Home go to the first or last run
     enter/tab  detail of the selected run
     /          search text in task, model or dir
-    f          filter by agent (all → claude → agy → codex → opencode)
+    f          filter by agent (all → claude → agy → codex → opencode → cursor)
     e          filter by result (failures, quota, done, running)
  ↑↓  scroll   esc  close   ?  close   q  close

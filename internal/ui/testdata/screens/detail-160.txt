@@ -1,5 +1,5 @@
- ◆ Panal  detail · claude · 15:04:05                                                                              ■ 2 active ■ 1 no quota/permission ■ 1 at rest
-‹   claude   ● orchestrating    agy   codex   opencode  ›
+ ◆ Panal  detail · claude · 15:04:05                                                                              ■ 2 active ■ 1 no quota/permission ■ 2 at rest
+‹   claude   ● orchestrating    agy   codex   opencode   cursor  ›
 
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ CLAUDE  ·  orchestrating                                                                                                                                     │

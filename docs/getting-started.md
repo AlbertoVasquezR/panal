@@ -89,6 +89,40 @@ the `message` table. For the Go plan's live usage it reads the key opencode
 keeps in `~/.local/share/opencode/auth.json` (or `OPENCODE_API_KEY`) and
 sends it only to opencode.ai.
 
+### cursor (`cursor-agent`, also `agent`)
+
+The cursor card comes from runs launched with `panal delegate`. Panal
+looks up the CLI as `cursor-agent`, then `agent`, then (on Windows) the
+installer shims under `%LOCALAPPDATA%\cursor-agent`. It never writes to
+cursor-agent's own files.
+
+There is no live quota. cursor-agent can list models (`cursor-agent
+models` / `--list-models`) and show the logged-in account
+(`cursor-agent status`) without starting a turn, but account usage is
+only in the interactive `/usage` view. The card shows "no live quota"
+unless a delegated run ended `out_of_quota`.
+
+`panal delegate` runs it non-interactively (`--trust` and `--workspace`
+so headless does not stall on the trust prompt):
+
+```text
+cursor-agent -p --output-format stream-json --trust --workspace DIR
+             [--model MODEL] --force   # may write; not confined to DIR
+cursor-agent -p --output-format stream-json --trust --workspace DIR
+             [--model MODEL] --auto-review [--sandbox enabled]   # -r
+```
+
+`--mode plan` is not used for `-r`: it rejects even a harmless
+read-only command. `--auto-review` lets the server classifier run safe
+reads and commands and deny the rest. `--sandbox enabled` is passed only
+on macOS and Linux. On Windows the CLI has no sandbox (`Sandbox mode is
+enabled but not available on this system`); `-r` is `--auto-review`
+alone, which still reads files and runs safe commands.
+
+A chain link is `cursor:<model>[:effort]`. Effort is not a separate flag:
+it is passed as `--model model[effort=…]` when the model id has no
+brackets. Long tasks go in a file the CLI is told to read.
+
 ### Runs from `panal delegate`
 
 Every attempt leaves a run file in `~/.panal/runs` (`PANAL_RUNS`) and its
@@ -108,7 +142,7 @@ installed CLI reports (listing only; nothing is spent). Live quota can be
 turned off with `live_quota = no` or `PANAL_LIVE_QUOTA=no`.
 
 If no reader finds anything and there are no runs, the dashboard opens
-with a welcome screen instead of four empty cards: which sources it looks
+with a welcome screen instead of empty cards: which sources it looks
 for, at which path, which exist and what to do next.
 
 To look at the screens without opening the interactive UI:

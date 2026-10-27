@@ -1,0 +1,9 @@
+{"type":"system","subtype":"init","cwd":"/tmp/wt","session_id":"00000000-0000-0000-0000-000000000001","model":"composer-2.5","permissionMode":"default"}
+{"type":"assistant","message":{"content":[{"type":"text","text":"I'll add a test for the pager and run it."}]}}
+{"type":"tool_call","subtype":"started","tool_call":{"readToolCall":{"args":{"path":"internal/ui/pager.go"}}}}
+{"type":"tool_call","subtype":"completed","tool_call":{"readToolCall":{"result":{"success":{"totalLines":80}}}}}
+{"type":"tool_call","subtype":"started","tool_call":{"writeToolCall":{"args":{"path":"internal/ui/pager_test.go"}}}}
+{"type":"tool_call","subtype":"completed","tool_call":{"writeToolCall":{"result":{"success":{"linesCreated":24}}}}}
+{"type":"tool_call","subtype":"started","tool_call":{"shellToolCall":{"args":{"command":"go test ./internal/ui -run TestPager"}}}}
+{"type":"tool_call","subtype":"completed","tool_call":{"shellToolCall":{"result":{"success":true}}}}
+{"type":"result","duration_ms":18420}

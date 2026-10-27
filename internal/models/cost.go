@@ -58,7 +58,7 @@ var classWords = []struct {
 	{0, []string{"free"}},
 	{1, []string{"nano", "micro"}},
 	{4, []string{"pro", "max", "ultra", "opus", "large", "astra"}},
-	{2, []string{"mini", "lite", "tiny", "small", "flash", "haiku", "luna", "lightning", "spark", "air", "oss"}},
+	{2, []string{"mini", "lite", "tiny", "small", "flash", "haiku", "luna", "lightning", "spark", "air", "oss", "composer"}},
 	{3, []string{"sonnet", "terra", "sol", "plus"}},
 }
 

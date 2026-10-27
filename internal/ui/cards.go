@@ -450,17 +450,30 @@ func Cards(rows []state.Row, a Animation, sel, width int, now time.Time) string 
 	return cards(rows, a, sel, width, now, true)
 }
 
+// cardsPerRow: all cards in one row when they fit; five or more drop to
+// three across before two, so a fifth card does not force a 2+2+1 stack.
+// Four cards keep the old 4-across / 2×2 / one-column steps.
+func cardsPerRow(n, width int) int {
+	if n <= 0 {
+		return 1
+	}
+	if width >= n*minWidth {
+		return n
+	}
+	if n >= 5 && width >= 3*minWidth {
+		return 3
+	}
+	if width >= 2*minWidth {
+		return 2
+	}
+	return 1
+}
+
 func cards(rows []state.Row, a Animation, sel, width int, now time.Time, withMascot bool) string {
 	if len(rows) == 0 {
 		return ""
 	}
-	perRow := len(rows)
-	if width < perRow*minWidth {
-		perRow = 2
-	}
-	if width < 2*minWidth {
-		perRow = 1
-	}
+	perRow := cardsPerRow(len(rows), width)
 	w := min(max(width/perRow, minWidth), width)
 	// Two passes: measure the tallest one and draw them all at that height,
 	// so the borders line up.
@@ -492,13 +505,7 @@ func MiniCards(rows []state.Row, sel, width int, now time.Time) string {
 	if len(rows) == 0 {
 		return ""
 	}
-	perRow := len(rows)
-	if width < perRow*minWidth {
-		perRow = 2
-	}
-	if width < 2*minWidth {
-		perRow = 1
-	}
+	perRow := cardsPerRow(len(rows), width)
 	w := min(max(width/perRow, minWidth), width)
 	var cards []string
 	for i, f := range rows {

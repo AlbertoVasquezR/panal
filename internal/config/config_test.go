@@ -21,8 +21,8 @@ func write(t *testing.T, dir, name, text string) string {
 
 func TestDisabledFromChain(t *testing.T) {
 	got, ok := DisabledFromChain(chain)
-	if !ok || !reflect.DeepEqual(got, []string{"opencode"}) {
-		t.Fatalf("got %v ok=%v, want [opencode]", got, ok)
+	if !ok || !reflect.DeepEqual(got, []string{"cursor", "opencode"}) {
+		t.Fatalf("got %v ok=%v, want [cursor opencode]", got, ok)
 	}
 	if _, ok := DisabledFromChain("  "); ok {
 		t.Fatal("an empty chain must give ok=false")
@@ -34,12 +34,12 @@ func TestResolver(t *testing.T) {
 	t.Setenv("PANAL_CHAIN", "")
 	conf := write(t, d, "panal.conf", "# comment\nchain = "+chain+"   # trailing note\n")
 	r := &Resolver{Path: conf}
-	if got := r.Disabled(); !reflect.DeepEqual(got, []string{"opencode"}) {
+	if got := r.Disabled(); !reflect.DeepEqual(got, []string{"cursor", "opencode"}) {
 		t.Fatalf("from the chain: %v", got)
 	}
 	// PANAL_CHAIN wins over the file.
 	t.Setenv("PANAL_CHAIN", "codex opencode")
-	if got := r.Disabled(); !reflect.DeepEqual(got, []string{"agy"}) {
+	if got := r.Disabled(); !reflect.DeepEqual(got, []string{"agy", "cursor"}) {
 		t.Fatalf("from PANAL_CHAIN: %v", got)
 	}
 	t.Setenv("PANAL_CHAIN", "")
@@ -147,11 +147,11 @@ func TestAutoPoolOffAgents(t *testing.T) {
 		off  string // the agents left out of it
 	}{
 		{Conf{Pool: "auto"}, "", ""},
-		{Conf{Pool: "auto", Models: "codex:gpt-6-luna* agy:gemini-3.8-flash-*"}, "agy codex", "opencode"},
+		{Conf{Pool: "auto", Models: "codex:gpt-6-luna* agy:gemini-3.8-flash-*"}, "agy codex", "cursor opencode"},
 		{Conf{Pool: "auto", Models: "*:gpt-*"}, "", ""},
-		{Conf{Pool: "auto", Exclude: "opencode agy:claude-*"}, "agy codex", "opencode"},
-		{Conf{Pool: "auto", Models: "codex", Exclude: "codex:*"}, "none", "agy codex opencode"},
-		{Conf{Chain: "auto", Pool: "Auto", Models: "agy:*"}, "agy", "codex opencode"},
+		{Conf{Pool: "auto", Exclude: "opencode agy:claude-*"}, "agy codex cursor", "opencode"},
+		{Conf{Pool: "auto", Models: "codex", Exclude: "codex:*"}, "none", "agy codex cursor opencode"},
+		{Conf{Chain: "auto", Pool: "Auto", Models: "agy:*"}, "agy", "codex cursor opencode"},
 	}
 	for _, c := range cases {
 		got := DelegateArms(c.c)

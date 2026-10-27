@@ -3,11 +3,14 @@ package delegate
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -191,6 +194,18 @@ func TestNoPermissionStopsTheChain(t *testing.T) {
 	}
 }
 
+func TestAgyHeadlessDenialIsNoPermission(t *testing.T) {
+	e := newEnv(t, []string{"agy", "codex"}, map[string]string{"agy": "perm", "codex": "ok"})
+	code, res := e.run("x", "agy")
+	if code != runs.ExitNoPermission || len(res) != 1 || res[0].Status != runs.NoPermission {
+		t.Fatalf("code %d, %v\n%s", code, statuses(res), e.out.String())
+	}
+	r := e.runFiles()["agy"]
+	if r.Status != runs.NoPermission || r.RC == nil || *r.RC != runs.ExitNoPermission {
+		t.Errorf("run file: %+v", r)
+	}
+}
+
 func TestRealFailureDoesNotFallBack(t *testing.T) {
 	e := newEnv(t, []string{"codex", "agy"}, map[string]string{"codex": "fail", "agy": "ok"})
 	code, res := e.run("x", "codex agy")
@@ -203,6 +218,43 @@ func TestRealFailureDoesNotFallBack(t *testing.T) {
 	}
 	if _, ran := e.runFiles()["agy"]; ran {
 		t.Error("agy should not run after a real failure")
+	}
+}
+
+func TestDoneWithCursor(t *testing.T) {
+	e := newEnv(t, []string{"cursor"}, map[string]string{"cursor": "ok"})
+	code, res := e.run("Fix the table", "cursor:composer-2.5:high")
+	if code != 0 || len(res) != 1 || res[0].Status != runs.Done {
+		t.Fatalf("code %d, results %+v\n%s", code, res, e.out.String())
+	}
+	r := e.runFiles()["cursor"]
+	if r.Status != runs.Done || r.Model != "composer-2.5" || r.Effort != "high" || r.Task != "Fix the table" {
+		t.Errorf("run file: %+v", r)
+	}
+	args := strings.Split(e.recorded("cursor.args"), "\n")
+	for _, want := range [][]string{{"-p", "--output-format"}, {"--output-format", "stream-json"}, {"--workspace", e.dir}, {"--model", "composer-2.5[effort=high]"}} {
+		if i := slices.Index(args, want[0]); i < 0 || i+1 >= len(args) || args[i+1] != want[1] {
+			t.Errorf("args %q lack %q", args, want)
+		}
+	}
+	if !slices.Contains(args, "--force") || !slices.Contains(args, "--trust") {
+		t.Errorf("write mode flags: %q", args)
+	}
+	for _, w := range []string{"--auto-review", "--approve-mcps", "--mode"} {
+		if slices.Contains(args, w) {
+			t.Errorf("write mode should not pass %s: %q", w, args)
+		}
+	}
+	if ev := read(t, r.Log+".jsonl"); !strings.Contains(ev, `"tool_call"`) {
+		t.Errorf("events:\n%s", ev)
+	}
+}
+
+func TestCursorQuotaFallsBack(t *testing.T) {
+	e := newEnv(t, []string{"cursor", "agy"}, map[string]string{"cursor": "quota", "agy": "ok"})
+	code, res := e.run("Add a test", "cursor agy")
+	if code != 0 || !slices.Equal(statuses(res), []runs.Status{runs.OutOfQuota, runs.Done}) {
+		t.Fatalf("code %d, %v\n%s", code, statuses(res), e.out.String())
 	}
 }
 
@@ -331,12 +383,74 @@ func TestSameAgentTwiceGetsTwoRunFiles(t *testing.T) {
 	}
 }
 
+func TestConcurrentDelegationsSameSecond(t *testing.T) {
+	now := time.Date(2026, 10, 7, 12, 30, 26, 0, time.UTC)
+	shared := t.TempDir()
+	const n = 12
+	type got struct {
+		id, taskFile, task string
+		err                string
+	}
+	ch := make(chan got, n)
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			e := newEnv(t, []string{"cursor"}, map[string]string{"cursor": "ok"})
+			e.r.RunsDir = shared
+			e.r.Now = func() time.Time { return now }
+			task := fmt.Sprintf("Fix the table\n\nconcurrent run %d", i)
+			code, res := e.run(task, "cursor")
+			if code != 0 || len(res) != 1 {
+				ch <- got{err: fmt.Sprintf("run %d: exit %d res %v\n%s", i, code, statuses(res), e.out.String())}
+				return
+			}
+			r, err := runs.ReadFile(res[0].RunFile)
+			if err != nil {
+				ch <- got{err: err.Error()}
+				return
+			}
+			body, _ := os.ReadFile(r.TaskFile)
+			ch <- got{id: r.ID, taskFile: r.TaskFile, task: string(body)}
+		}(i)
+	}
+	wg.Wait()
+	close(ch)
+	ids, files, texts := map[string]bool{}, map[string]bool{}, map[string]bool{}
+	for g := range ch {
+		if g.err != "" {
+			t.Error(g.err)
+			continue
+		}
+		if !strings.Contains(g.id, ".") {
+			t.Errorf("id %q should include milliseconds", g.id)
+		}
+		if ids[g.id] {
+			t.Errorf("duplicate id %q", g.id)
+		}
+		ids[g.id] = true
+		if g.taskFile == "" || files[g.taskFile] {
+			t.Errorf("task file %q", g.taskFile)
+		}
+		files[g.taskFile] = true
+		if texts[g.task] {
+			t.Errorf("two runs shared task text %q", g.task)
+		}
+		texts[g.task] = true
+	}
+	if len(ids) != n {
+		t.Fatalf("got %d unique ids, want %d", len(ids), n)
+	}
+}
+
 func TestReadOnlyArgs(t *testing.T) {
 	a := attempt{Link: Link{CLI: "x"}, Task: "look", Dir: "D", ReadOnly: true, Log: "L"}
 	cases := map[string][]string{
 		"codex":    {"-s", "read-only"},
 		"agy":      {"--mode", "plan", "--sandbox"},
 		"opencode": {"--agent", "plan"},
+		"cursor":   cursorReadOnlyFlags(runtime.GOOS),
 	}
 	for cli, want := range cases {
 		a.Link.CLI = cli
@@ -345,11 +459,45 @@ func TestReadOnlyArgs(t *testing.T) {
 		if i < 0 || !slices.Equal(args[i:i+len(want)], want) {
 			t.Errorf("%s read-only args %q lack %q", cli, args, want)
 		}
-		for _, w := range []string{"workspace-write", "--auto", "--dangerously-skip-permissions"} {
+		for _, w := range []string{"workspace-write", "--auto", "--dangerously-skip-permissions", "--force"} {
 			if slices.Contains(args, w) {
 				t.Errorf("%s read-only args contain %s", cli, w)
 			}
 		}
+	}
+}
+
+func TestCursorReadOnlyFlags(t *testing.T) {
+	cases := []struct {
+		goos string
+		want []string
+	}{
+		{"linux", []string{"--auto-review", "--sandbox", "enabled"}},
+		{"darwin", []string{"--auto-review", "--sandbox", "enabled"}},
+		{"windows", []string{"--auto-review"}},
+		{"js", []string{"--auto-review"}},
+	}
+	for _, c := range cases {
+		got := cursorReadOnlyFlags(c.goos)
+		if !slices.Equal(got, c.want) {
+			t.Errorf("%s: %q, want %q", c.goos, got, c.want)
+		}
+		if slices.Contains(got, "--force") {
+			t.Errorf("%s: write flag in read-only args: %q", c.goos, got)
+		}
+	}
+}
+
+func TestPermissionHint(t *testing.T) {
+	msg := "Error: Sandbox mode is enabled but not available on this system. Sandbox requires macOS or Linux."
+	if h := permissionHint("cursor", msg); !strings.Contains(h, "Windows") || !strings.Contains(h, "--auto-review") {
+		t.Errorf("hint: %q", h)
+	}
+	if h := permissionHint("cursor", "Untrusted workspace. Pass --trust"); h != "" {
+		t.Errorf("no hint for trust: %q", h)
+	}
+	if h := permissionHint("agy", msg); h != "" {
+		t.Errorf("agy should not get the cursor hint: %q", h)
 	}
 }
 
@@ -370,6 +518,9 @@ func TestParseChain(t *testing.T) {
 			t.Errorf("round trip %v → %q → %v", l, l.String(), back)
 		}
 	}
+	if _, err := ParseChain("cursor:composer-2.5:high"); err != nil {
+		t.Errorf("cursor link: %v", err)
+	}
 	if _, err := ParseChain("claude:x"); err == nil {
 		t.Error("unknown agent should fail")
 	}
@@ -385,7 +536,7 @@ func TestDefaultChainIsTheInstalledCLIs(t *testing.T) {
 		}
 		return n, nil
 	}
-	if got := defaultChain(look); !slices.Equal(got, []Link{{CLI: "agy"}, {CLI: "opencode"}}) {
+	if got := defaultChain(look); !slices.Equal(got, []Link{{CLI: "agy"}, {CLI: "opencode"}, {CLI: "cursor"}}) {
 		t.Errorf("default chain %v", got)
 	}
 }

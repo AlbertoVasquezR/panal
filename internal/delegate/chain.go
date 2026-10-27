@@ -47,7 +47,7 @@ var efforts = func() map[string]bool {
 // DefaultCLIs is the order of the default chain, used when neither -c,
 // PANAL_CHAIN nor the config key chain say otherwise: every installed one of
 // these, each with its own default model.
-var DefaultCLIs = []string{"codex", "agy", "opencode"}
+var DefaultCLIs = []string{"codex", "agy", "opencode", "cursor"}
 
 // ParseChain parses "cli:model[:effort] cli[:model] ...". Links are separated
 // by spaces or commas.
@@ -57,7 +57,7 @@ func ParseChain(s string) ([]Link, error) {
 		cli, rest, _ := strings.Cut(f, ":")
 		cli = strings.ToLower(strings.TrimSpace(cli))
 		if _, ok := agents[cli]; !ok {
-			return nil, fmt.Errorf("unknown agent %q in chain link %q (known: codex, agy, opencode)", cli, f)
+			return nil, fmt.Errorf("unknown agent %q in chain link %q (known: codex, agy, opencode, cursor)", cli, f)
 		}
 		l := Link{CLI: cli, Model: rest}
 		if i := strings.LastIndex(rest, ":"); i >= 0 && efforts[strings.ToLower(rest[i+1:])] {

@@ -186,7 +186,7 @@ Flags:
 	return 0
 }
 
-func agentNames() []string { return []string{"claude", "agy", "codex", "opencode"} }
+func agentNames() []string { return []string{"claude", "agy", "codex", "opencode", "cursor"} }
 
 func known(a string) bool {
 	_, ok := mascots.All[a]

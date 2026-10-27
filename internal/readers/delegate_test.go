@@ -206,6 +206,7 @@ func TestDelegate_Running_DeadPID(t *testing.T) {
 	dir := t.TempDir()
 	jsonContent := `{
 		"version": 1,
+		"id": "20260924-100000",
 		"agent": "codex",
 		"model": "gpt-6",
 		"task": "something",
@@ -218,20 +219,34 @@ func TestDelegate_Running_DeadPID(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	now := time.Date(2026, 9, 24, 11, 0, 0, 0, time.UTC)
 	d := &Delegate{
 		Name:     "codex",
 		Dirs:     []string{dir},
 		PIDAlive: func(pid int) bool { return false }, // dead PID
-		Now:      time.Now,
+		Now:      func() time.Time { return now },
 	}
 
 	f := d.Read()
 	if f.Status != state.Failed {
 		t.Fatalf("expected Failed for a dead pid, got %v", f.Status)
 	}
-	wantDetail := "interrupted: its process is gone"
-	if f.Detail != wantDetail {
-		t.Fatalf("expected Detail %q, got %q", wantDetail, f.Detail)
+
+	got, err := runs.ReadFile(jsonPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != runs.Failed {
+		t.Fatalf("run file should be rewritten as failed, got %s", got.Status)
+	}
+	if got.End == "" || got.RC == nil || *got.RC != runs.ExitFailed {
+		t.Fatalf("stale close: %+v", got)
+	}
+
+	// A second read keeps the persisted failed record (not "running").
+	f2 := d.Read()
+	if f2.Status != state.Failed {
+		t.Fatalf("second read: %v", f2.Status)
 	}
 }
 

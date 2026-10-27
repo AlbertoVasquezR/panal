@@ -65,7 +65,7 @@ func TestBadgesCheckTextAndIcon(t *testing.T) {
 // when the badge fits on the right and when it has to go below.
 func TestTitleBandExactWidth(t *testing.T) {
 	widths := []int{24, 28, 32, 36, 40, 50}
-	agents := []string{"claude", "agy", "codex", "opencode"}
+	agents := []string{"claude", "agy", "codex", "opencode", "cursor"}
 	statuses := []state.Status{
 		state.Working,
 		state.Orchestrating,
