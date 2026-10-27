@@ -1,0 +1,32 @@
+name: no-ai-coauthor
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const AI = /(\bai\b|bot\b|\[bot\]|assistant|\bagent|claude|anthropic|openai|codex|chatgpt|\bgpt|cursor|copilot|github-actions|grok|\bxai\b|x\.ai|gemini|google ai|aider|devin|windsurf|codeium|amazon q|tabnine|kimi|moonshot|deepseek|qwen|mistral)/i;
+            const bad = l => (/^\s*co-authored-by:/i.test(l) && AI.test(l)) ||
+                             (/(made-with:|(generated|created|written|made) (with|by) )/i.test(l) && AI.test(l));
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            const clean = body.split('\n').filter(l => !bad(l)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+            if (clean !== body.trim()) {
+              try {
+                await github.rest.pulls.update({ ...context.repo, pull_number: pr.number, body: clean });
+                core.notice('AI attribution removed from PR description.');
+              } catch (e) { core.warning('Could not edit PR body (fork PR?): ' + e.message); }
+            }
+            const commits = await github.paginate(github.rest.pulls.listCommits, { ...context.repo, pull_number: pr.number, per_page: 100 });
+            const offenders = commits.filter(c => c.commit.message.split('\n').some(bad));
+            if (offenders.length) {
+              core.setFailed('Commits with AI co-author/attribution (reword them, e.g. git rebase -i, or squash-merge with a clean message):\n' +
+                offenders.map(c => `${c.sha.slice(0,7)} ${c.commit.message.split('\n')[0]}`).join('\n'));
+            }
