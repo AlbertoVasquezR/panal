@@ -42,7 +42,7 @@ Glyphs that Cascadia (Windows Terminal's font) doesn't have, like "↻", are dra
 
 Every color comes from the palette file in `internal/ui`; don't write a loose `lipgloss.Color("#…")` anywhere else.
 
-- Per-agent accents: claude `#D97757`, agy `#9575CD`, codex `#69F0AE`, opencode `#FFD54F`. They are the pixel art's colors: if you change one, change the mascot.
+- Per-agent accents: claude `#D97757`, agy `#9575CD`, codex `#69F0AE`, opencode `#FFD54F`, cursor `#38BDF8`. They are the pixel art's colors: if you change one, change the mascot.
 - Themes (`-theme`, `ApplyTheme` in `internal/ui`): if you add a dim, border or background color, decide what value it takes in "contrast". Never put a style with a fixed color in a package variable without resetting it in `ApplyTheme`.
 - Adaptive semantic colors (`AdaptiveColor` light/dark): green, amber, red, blue, dim, border, empty and brand.
 - Text on colored banners or badges: the fixed black "text on color" color, never the palette's "0" nor grey.
@@ -62,6 +62,7 @@ Every color comes from the palette file in `internal/ui`; don't write a loose `l
 Check every change at 160, 132, 100, 80 and 60 columns:
 
 - Room for 4 cards across → one row of 4; otherwise 2×2; very narrow → one column.
+- The compact table's row of mascots uses 18-column slots, 16 when only that fits (five agents in 80 columns; the zzz next to a status goes first); narrower than that, the row hides.
 - If it doesn't fit vertically: first the mascots go, then it switches to the compact table.
 - The last things to go are: name, status, task.
 

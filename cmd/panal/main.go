@@ -1,5 +1,5 @@
 // panal: a read-only terminal dashboard of the agents Claude Code
-// orchestrates (opencode, codex, agy); `panal delegate`, which hands them
+// orchestrates (opencode, codex, agy, cursor); `panal delegate`, which hands them
 // tasks; `panal route`, which shows which agent the router would pick; and
 // `panal feedback`, which rates a run so the router learns; and `panal
 // models`, the models each CLI can use. See README.md and docs/.
@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -153,6 +152,7 @@ func probeLive(ls []readers.Reader) []string {
 	} else {
 		out = append(out, "○ agy: "+l.Error)
 	}
+	out = append(out, "○ cursor: no usage query that spends nothing (cursor-agent lists models and status; /usage is interactive only)")
 	return out
 }
 
@@ -194,7 +194,7 @@ func main() {
 	noAnim := flag.Bool("no-animation", ui.NoAnimation || os.Getenv("PANAL_NO_ANIMATION") != "", "still mascots, no reactions (or PANAL_NO_ANIMATION=1)")
 	flag.Usage = func() {
 		fmt.Fprint(flag.CommandLine.Output(), `Usage: panal [flags]                          the dashboard (see the flags below)
-       panal delegate -d DIR [flags] "task"  hand a task to codex, agy or opencode
+       panal delegate -d DIR [flags] "task"  hand a task to codex, agy, opencode or cursor
        panal route [-r] "task"               which agent the router would pick, without running it
        panal route -stats                    what the router has learned
        panal models [-refresh]               the models each agent CLI can use, and which the router may pick
@@ -271,7 +271,7 @@ Flags:
 		}
 		// The models cache is filled first if it is missing (listing only).
 		mctx, mcancel := context.WithTimeout(context.Background(), 30*time.Second)
-		cat := models.Ensure(mctx, models.Path(), models.Exec, exec.LookPath, 20*time.Second, time.Now())
+		cat := models.Ensure(mctx, models.Path(), models.Exec, config.LookPath, 20*time.Second, time.Now())
 		mcancel()
 		fmt.Print(ui.Diagnostics(ls, config.Path(), liveLines, models.DoctorLines(cat, time.Now())))
 		return
@@ -353,7 +353,7 @@ Flags:
 	// The models each CLI can use, for the router: refreshed in the
 	// background when the cache is older than a day. It never blocks the
 	// UI, and its only write is panal's own ~/.panal/models.json.
-	models.RefreshInBackground(ctx, models.Path(), models.Exec, exec.LookPath, 30*time.Second, models.MaxAge, time.Now)
+	models.RefreshInBackground(ctx, models.Path(), models.Exec, config.LookPath, 30*time.Second, models.MaxAge, time.Now)
 	if conf.Serve != "" {
 		go func() {
 			if err := remote.Serve(ctx, conf.Serve, token, readers.All()); err != nil {

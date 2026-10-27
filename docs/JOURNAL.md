@@ -16,6 +16,83 @@ written; the current names are in the README and `docs/`.
 
 ---
 
+## 2026-10-19: fixes to the cursor-agent work
+
+A review of the cursor-agent work found these; each has a test.
+
+- `agent` is too common a name to trust: an unrelated `agent` on `PATH` was
+  run for model listing and, through the default chain, with `--force`. It
+  now counts only if its path, after symlinks, is inside a `cursor-agent` or
+  `cursor-cli` directory. Nothing is executed to check.
+- Closing dead `running` records could overwrite the delegate's final
+  record with the dashboard's stale copy (the agent's pid dies a moment
+  before the delegate writes `done`). `runs.CloseIfDead` now re-reads the
+  file; the reader waits a minute after first seeing the pid gone;
+  `WriteFile` uses its own temp file per call; EPERM from `kill(pid, 0)` is
+  alive. Also: the run file's `pid` is the agent CLI's, not
+  `panal delegate`'s (the docs said otherwise).
+- A task starting with `-` went on the command line, where agy, opencode or
+  cursor could read it as an option (`--force` would undo `-r`). It goes
+  through the task file now.
+- cursor's assistant events printed as raw JSON (`message` is an object,
+  not a string). The event printer decodes either; a failed stream-json
+  `result` is an error event, so classify sees refusals that never reach
+  stderr; error lines name their CLI instead of always "codex".
+- Five agents hid the compact table's mascots at 80 columns (18-column
+  slots). They narrow to 16 when that fits.
+- `docs/mascots.png` and `docs/animations.png` regenerated with cursor.
+- Not changed: cursor stays in the default chain with `--force`
+  (documented in `docs/delegate.md`). Still not verified against a real
+  cursor-agent: the quota wording, `model[effort=…]`, and whether its
+  parser would really take a dash-leading task as a flag.
+- `TestAgy_OutOfQuotaToIdle` fails on master too, in any time zone; not
+  looked into here.
+
+---
+
+## 2026-10-07: cursor-agent as a first-class agent
+
+- New reader `internal/readers/cursor.go`: status, model, task and last
+  action from `panal delegate` run files; stream-json activity from
+  `<log>.jsonl`. No live quota: cursor-agent has no usage query that
+  spends nothing (`/usage` is interactive only). `-doctor` lists the
+  resolved CLI path (`cursor-agent`, then `agent`, then the Windows
+  installer dir `%LOCALAPPDATA%\cursor-agent`).
+- `panal delegate` runs
+  `cursor-agent -p --output-format stream-json --trust --workspace DIR`
+  with `--force` (writes; not confined to `-d`) or
+  `--auto-review` (`-r`; `--sandbox enabled` only on macOS/Linux — the
+  CLI refuses sandbox on Windows). `--mode plan` is too restrictive
+  (it rejects `hostname`). Effort becomes `--model id[effort=…]`.
+  Chain name is `cursor`.
+- Models: `cursor-agent models`, fallback `--list-models`. Parser
+  accepts the live Windows listing (`id - Display name`, header,
+  annotations, ANSI, CRLF), id-per-line (optional tab + name), and JSON.
+  On Windows the `.cmd` shim is run through `cmd.exe /c`.
+- Dashboard: cyan `#38BDF8` diamond mascot; fifth card after opencode.
+  Five cards use 3-across before 2-across so they don't stack 2+2+1 at
+  100/132 columns. Four-card layout is unchanged.
+- `-off` / `off =` / `config.Known` include cursor. Default chain appends
+  it when the CLI is installed.
+
+- agy `delegate -r` that auto-denies a tool in print mode (exit 0,
+  "headless mode cannot prompt … auto-denied") is `no_permission`, not
+  `done`. Separate commit.
+
+Verified on a Windows box with cursor-agent logged in: `-p` /
+`--print`, `--output-format`, `--auto-review`, `--force`/`--yolo`,
+`--sandbox`, `--trust`, `--workspace`, `--model`, `--list-models`,
+`status`. `--mode plan` rejected a harmless `hostname`. `--sandbox
+enabled` on Windows exits 1 (`Sandbox mode is enabled but not
+available`). Live `cursor-agent models` is `id - Display name`.
+Not verified here: quota-refusal wording.
+
+- Run ids are `YYYYMMDD-HHMMSS.mmm-xxxxxxxx` (milliseconds + random). The
+  first write of a run file and of `<id>.task.md` uses `O_EXCL` and
+  retries, so two `delegate` in the same second cannot share an id or
+  task file. A `running` record whose pid is gone is rewritten `failed`
+  on the next dashboard read. Old second-resolution ids still parse.
+
 ## 2026-10-03: pets inside Claude Code
 
 - `panal pet`: one mascot for a split pane next to any CLI, plus `-json` /

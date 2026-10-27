@@ -99,7 +99,7 @@ func (c Quota) Expire(now time.Time) (out Quota, freed bool) {
 
 // Row is the state of one agent at one instant.
 type Row struct {
-	Agent       string // "claude", "agy", "codex", "opencode"
+	Agent       string // "claude", "agy", "codex", "opencode", "cursor"
 	Status      Status
 	Model       string
 	Task        string // one line

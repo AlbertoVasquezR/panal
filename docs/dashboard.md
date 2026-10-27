@@ -226,11 +226,12 @@ spend no quota:
 | agy | `agy -p /usage --output-format json` | every 5 min |
 | Claude Code | `claude -p` in stream-json with only a `get_usage` control request, hooks off, session not saved | every 5 min |
 | opencode (Go plan) | `GET https://opencode.ai/zen/go/v1/usage` with the key opencode keeps | every 5 min |
+| cursor | none | cursor-agent has no usage query that spends nothing (`/usage` is interactive only) |
 
 Every agy and Claude Code answer is checked: if one ever shows a turn or a
 cost, Panal stops asking for that session. Your Claude credentials are
-never read; the CLI does the asking. `r` asks all four now. Turn it off
-with `live_quota = no` (or `PANAL_LIVE_QUOTA=no`).
+never read; the CLI does the asking. `r` asks the four that have a query.
+Turn it off with `live_quota = no` (or `PANAL_LIVE_QUOTA=no`).
 
 - **Resets.** If a window's reported reset time has passed, it is shown at
   0 % as already reset, and if it kept the agent out of quota, the agent is

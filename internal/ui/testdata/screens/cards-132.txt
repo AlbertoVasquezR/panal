@@ -1,20 +1,35 @@
- ◆ Panal  live · every 2s · 15:04:05                                                  ■ 2 active ■ 1 no quota/permission ■ 1 at rest
+ ◆ Panal  live · every 2s · 15:04:05                                                  ■ 2 active ■ 1 no quota/permission ■ 2 at rest
    1 Dashboard   2 History   3 Report   4 Timeline   ? Help 
   claude orchestrating · agy working for 18 min · codex out of quota · codex: credits for ~23 days
 
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓╭───────────────────────────────╮╭───────────────────────────────╮╭───────────────────────────────╮
-┃  CLAUDE      ● orchestrating  ┃│  AGY               ● working  ││  CODEX        ◐ out of quota  ││  OPENCODE             ○ idle  │
-┃            ▄▄▄▄▄▄             ┃│             ▄▄▄▄              ││              ▀    ▀▄          ││          ▄▄▄▄▄▄▄▄▄▄           │
-┃           █▀████▀█            ┃│            ██▀███             ││           █▀▀▀▀▀▀█            ││          ██▀███████           │
-┃          ▄████████▄           ┃│           ▄▀▀▀▀▀▀▄            ││           ████████            ││          ██▀▀██████           │
-┃          ▀████████▀█          ┃│           ▀▀█▀▀█▀▀            ││          ▄████████▄           ││          █▀▀▀▀▀▀▀▀█           │
-┃           ▀ ▀  ▀ ▀            ┃│            ▀▀  ▀▀             ││           ▀▀    ▀▀            ││           ▄█    █▄            │
-┃                               ┃│                               ││ ⚠ modified 1 file outside wh… ││                               │
-┃ model claude-3-7-sonnet       ┃│ model gemini-2.5-pro          ││                               ││ model claude-3-5-sonnet       │
-┃ time  40 min                  ┃│ time  18 min                  ││ model o3-mini                 ││ time  2 h ago · took 15 min   │
-┃ task  claude · Orchestrating… ┃│ task  agy · Golden screen te… ││ time  out of quota 3 h ago    ││ task  opencode · Waiting for… │
-┃                               ┃│                               ││ task  codex · Optimize SQL q… ││                               │
-┃ quota active                  ┃│ 5 h    ██░░  62% resets 16:39 ││                               ││ quota Go plan available       │
-┃                               ┃│ week   ███░░░░░  35% ↻ 29 Sep ││ quota weekly quota used up    ││                               │
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛╰───────────────────────────────╯╰───────────────────────────────╯╰───────────────────────────────╯
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓╭──────────────────────────────────────────╮╭──────────────────────────────────────────╮
+┃  CLAUDE                 ● orchestrating  ┃│  AGY                          ● working  ││  CODEX                   ◐ out of quota  │
+┃                  ▄▄▄▄▄▄                  ┃│                   ▄▄▄▄                   ││                    ▀    ▀▄               │
+┃                 █▀████▀█                 ┃│                  ██▀███                  ││                 █▀▀▀▀▀▀█                 │
+┃                ▄████████▄                ┃│                 ▄▀▀▀▀▀▀▄                 ││                 ████████                 │
+┃                ▀████████▀█               ┃│                 ▀▀█▀▀█▀▀                 ││                ▄████████▄                │
+┃                 ▀ ▀  ▀ ▀                 ┃│                  ▀▀  ▀▀                  ││                 ▀▀    ▀▀                 │
+┃                                          ┃│                                          ││ ⚠ modified 1 file outside what was allo… │
+┃ model claude-3-7-sonnet                  ┃│ model gemini-2.5-pro                     ││                                          │
+┃ time  40 min                             ┃│ time  18 min                             ││ model o3-mini                            │
+┃ task  claude · Orchestrating agents and… ┃│ task  agy · Golden screen tests to catc… ││ time  out of quota 3 h ago               │
+┃                                          ┃│                                          ││ task  codex · Optimize SQL queries in r… │
+┃ quota active                             ┃│ 5 h    █████████░░░░░░  62% resets 16:39 ││                                          │
+┃                                          ┃│ week   █████░░░░░░░░░  35% resets 29 Sep ││ quota weekly quota used up               │
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛╰──────────────────────────────────────────╯╰──────────────────────────────────────────╯
+╭──────────────────────────────────────────╮╭──────────────────────────────────────────╮
+│  OPENCODE                        ○ idle  ││  CURSOR                          ○ idle  │
+│                ▄▄▄▄▄▄▄▄▄▄                ││                   ▄▄▄▄                   │
+│                ██▀███████                ││                  █▀██▀█                  │
+│                ██▀▀██████                ││                  ▀████▀                  │
+│                █▀▀▀▀▀▀▀▀█                ││                    ▀▀                    │
+│                 ▄█    █▄                 ││                     ▀                    │
+│                                          ││                                          │
+│ model claude-3-5-sonnet                  ││ model composer-2.5                       │
+│ time  2 h ago · took 15 min              ││ time  45 min ago · took 5 min            │
+│ task  opencode · Waiting for instructio… ││ task  cursor · Waiting for a delegated … │
+│                                          ││                                          │
+│ quota Go plan available                  ││ quota no live quota                      │
+│                                          ││                                          │
+╰──────────────────────────────────────────╯╰──────────────────────────────────────────╯
  ←→  select   enter  detail   ?  help   q  quit

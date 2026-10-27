@@ -15,7 +15,7 @@ flowchart TB
         SL["Claude status line JSON<br/>+ session transcript"]
         CS["~/.codex/sessions"]
         OC["opencode log + opencode.db"]
-        CLI["codex app-server · agy /usage<br/>claude get_usage · opencode usage API"]
+        CLI["codex app-server · agy /usage<br/>claude get_usage · opencode usage API<br/>(cursor-agent: no live quota)"]
     end
 
     subgraph panal["~/.panal (Panal's own files)"]
@@ -66,7 +66,7 @@ flowchart TB
 | `cmd/panal` | flags, subcommand dispatch (`delegate`, `route`, `models`, `feedback`, `pet`), wiring config to the UI |
 | `cmd/preview` | renders every mascot frame to a PNG (`docs/animations.png`) |
 | `internal/state` | the shared model: `Row`, `Status`, `Quota`, `Bar` |
-| `internal/readers` | one reader per agent (claude, agy, codex, opencode) plus delegated runs; `Sources` for `-doctor` |
+| `internal/readers` | one reader per agent (claude, agy, codex, opencode, cursor) plus delegated runs; `Sources` for `-doctor` |
 | `internal/live` | live quota queries to the CLIs (codex app-server, agy `/usage`, claude `get_usage`, opencode usage API) |
 | `internal/runs` | the run file format, its directories and `~/.panal` (`Home`); `legacy.go` reads delegar.sh files |
 | `internal/history` | past runs with tokens, cost, ratings and full tasks, for History, Report, Timeline and the router |
@@ -105,9 +105,10 @@ flowchart TB
 - Readers and parsers are tested against **real captured samples** in
   each package's `testdata/`.
 - `internal/delegate` tests run the test binary itself as a fake codex,
-  agy and opencode; `internal/router` tests run it as a fake external
+  agy, opencode and cursor; `internal/router` tests run it as a fake external
   router; `internal/models` tests answer the listing commands with real
-  outputs. No test runs a real agent.
+  outputs (cursor-agent's listing is reconstructed from public slugs).
+  No test runs a real agent.
 - Thompson sampling is seeded (`math/rand/v2` PCG) in tests.
 - The UI has golden screens in `internal/ui/testdata/screens/` (cards,
   table, detail, history, history detail, report, timeline and help at 80,

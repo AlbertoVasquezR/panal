@@ -1,5 +1,5 @@
 // Package delegate is `panal delegate`: it hands a task to a coding agent CLI
-// (codex, agy or opencode), falls back to the next one in a chain when an
+// (codex, agy, opencode or cursor), falls back to the next one in a chain when an
 // agent is out of quota, and records each attempt as a run file
 // (internal/runs) with its log, so the dashboard shows it.
 //
@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -30,7 +29,7 @@ import (
 const usageHead = `Usage: panal delegate -d DIR [flags] "task"
        panal delegate -d DIR [flags] -f task.md
 
-Hands a task to a coding agent CLI (codex, agy or opencode) and records the
+Hands a task to a coding agent CLI (codex, agy, opencode or cursor) and records the
 run so the Panal dashboard shows it. If an agent is out of quota, the next
 link of the chain gets the task. Each attempt is limited to -t.
 
@@ -155,7 +154,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		rt = systemRouting(conf)
 		// An explicit pool is checked against the cached catalog only; pool =
 		// auto fills a missing cache first.
-		pool, info, err := rt.resolvePool(pSpec, pFrom, conf, exec.LookPath, false)
+		pool, info, err := rt.resolvePool(pSpec, pFrom, conf, config.LookPath, false)
 		if err != nil {
 			return bad(fmt.Sprintf("%v (pool from %s)", err, pFrom))
 		}
@@ -172,7 +171,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 			if task.Chain, err = ParseChain(spec); err != nil {
 				return bad(fmt.Sprintf("%v (from %s)", err, from))
 			}
-		} else if task.Chain = defaultChain(exec.LookPath); len(task.Chain) == 0 {
+		} else if task.Chain = defaultChain(config.LookPath); len(task.Chain) == 0 {
 			fmt.Fprintf(stderr, "panal delegate: none of %s is installed (or in PATH)\n", strings.Join(DefaultCLIs, ", "))
 			return runs.ExitFailed
 		}
@@ -187,7 +186,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 	r := &Runner{
 		Stdout: stdout, Stderr: stderr,
 		RunsDir: runs.Dir(), LogDir: runs.LogDir(),
-		LookPath:    exec.LookPath,
+		LookPath:    config.LookPath,
 		Now:         time.Now,
 		Interrupt:   sig,
 		Grace:       5 * time.Second,

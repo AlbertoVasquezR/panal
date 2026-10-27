@@ -90,6 +90,7 @@ var All = map[string]Sprite{
 	"agy":      agy,
 	"codex":    codex,
 	"opencode": opencode,
+	"cursor":   cursor,
 }
 
 // Every how many ticks the z rises when sleeping.
@@ -501,6 +502,46 @@ func init() {
 		line(".WkykcccckW."),
 	}
 	All["opencode"] = opencode
+}
+
+// ----------------------------------------------------------------- cursor --
+// Cursor CLI: a cyan diamond (the mark) with a pointer tail. When working
+// the diamond hops and the tip blinks.
+var cursor = Sprite{
+	Name: "cursor",
+	Palette: map[rune]string{
+		'C': "#38BDF8", 'c': "#0284C7", 'w': "#E0F2FE", 'k': "#0F172A",
+	},
+	Base: []string{
+		"............",
+		"....CCCC....",
+		"...CCCCCC...",
+		"...CkCCkC...",
+		"...CCCCCC...",
+		"....CCCC....",
+		".....Cc.....",
+		".....cC.....",
+		"......c.....",
+		"............",
+	},
+	Eyes:   [][2]int{{3, 4}, {3, 7}},
+	Eyelid: 'C',
+}
+
+func init() {
+	tip := func(tail []string) []string {
+		f := append([]string(nil), cursor.Base...)
+		copy(f[6:], tail)
+		return f
+	}
+	hop := shiftY(cursor.Base, -1)
+	cursor.Work = [][]string{
+		cursor.Base,
+		tip([]string{".....CC.....", ".....cC.....", "......c.....", "............"}),
+		hop,
+		tip([]string{".....Cc.....", "......C.....", "......c.....", "............"}),
+	}
+	All["cursor"] = cursor
 }
 
 // Render returns frame n of the given mode, in half blocks. In Sleeping and

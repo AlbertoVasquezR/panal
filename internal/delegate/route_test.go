@@ -210,7 +210,7 @@ func TestRouteDryRun(t *testing.T) {
 	if code := routeMain(nil, &out, &errb, config.Conf{}, fakeRouting(e, 0), lookPath); code != 2 {
 		t.Errorf("no task: code %d", code)
 	}
-	if code := routeMain([]string{"x"}, &out, &errb, config.Conf{}, fakeRouting(e, 0), lookPath); code != 2 || !strings.Contains(errb.String(), "none of codex, agy, opencode is installed") {
+	if code := routeMain([]string{"x"}, &out, &errb, config.Conf{}, fakeRouting(e, 0), lookPath); code != 2 || !strings.Contains(errb.String(), "none of codex, agy, opencode, cursor is installed") {
 		t.Errorf("no pool and nothing installed: code %d %s", code, errb.String())
 	}
 }

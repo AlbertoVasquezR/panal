@@ -57,9 +57,9 @@ func TestHistoryCursorAndScrolling(t *testing.T) {
 }
 
 func TestHistoryFilterCyclesAndFilters(t *testing.T) {
-	m := modelWithRuns(12, "claude", "agy", "codex", "opencode")
+	m := modelWithRuns(12, "claude", "agy", "codex", "opencode", "cursor")
 	var seen []string
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 6; i++ {
 		m.historyKey("f")
 		seen = append(seen, m.historyFilter)
 		for _, c := range m.filteredRuns() {
@@ -68,7 +68,7 @@ func TestHistoryFilterCyclesAndFilters(t *testing.T) {
 			}
 		}
 	}
-	if got := strings.Join(seen, ","); got != "claude,agy,codex,opencode," {
+	if got := strings.Join(seen, ","); got != "claude,agy,codex,opencode,cursor," {
 		t.Fatalf("the filter does not cycle in order: %q", got)
 	}
 	if n := len(m.filteredRuns()); n != 12 {

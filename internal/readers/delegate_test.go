@@ -206,6 +206,7 @@ func TestDelegate_Running_DeadPID(t *testing.T) {
 	dir := t.TempDir()
 	jsonContent := `{
 		"version": 1,
+		"id": "20260924-100000",
 		"agent": "codex",
 		"model": "gpt-6",
 		"task": "something",
@@ -218,20 +219,77 @@ func TestDelegate_Running_DeadPID(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	now := time.Date(2026, 9, 24, 11, 0, 0, 0, time.UTC)
 	d := &Delegate{
 		Name:     "codex",
 		Dirs:     []string{dir},
 		PIDAlive: func(pid int) bool { return false }, // dead PID
-		Now:      time.Now,
+		Now:      func() time.Time { return now },
 	}
 
 	f := d.Read()
 	if f.Status != state.Failed {
 		t.Fatalf("expected Failed for a dead pid, got %v", f.Status)
 	}
-	wantDetail := "interrupted: its process is gone"
-	if f.Detail != wantDetail {
-		t.Fatalf("expected Detail %q, got %q", wantDetail, f.Detail)
+	got, err := runs.ReadFile(jsonPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != runs.Running {
+		t.Fatalf("the first sight of a dead pid must not rewrite the file yet, got %s", got.Status)
+	}
+
+	now = now.Add(closeAfter / 2)
+	d.Read()
+	if got, _ = runs.ReadFile(jsonPath); got.Status != runs.Running {
+		t.Fatalf("rewritten before closeAfter: %s", got.Status)
+	}
+
+	now = now.Add(closeAfter)
+	if f := d.Read(); f.Status != state.Failed {
+		t.Fatalf("after closeAfter: %v", f.Status)
+	}
+	got, err = runs.ReadFile(jsonPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != runs.Failed {
+		t.Fatalf("run file should be rewritten as failed, got %s", got.Status)
+	}
+	if got.End == "" || got.RC == nil || *got.RC != runs.ExitFailed {
+		t.Fatalf("stale close: %+v", got)
+	}
+
+	// A second read keeps the persisted failed record (not "running").
+	f2 := d.Read()
+	if f2.Status != state.Failed {
+		t.Fatalf("second read: %v", f2.Status)
+	}
+}
+
+func TestDelegate_DeadPIDDoesNotOverwriteFinalRecord(t *testing.T) {
+	dir := t.TempDir()
+	r := runs.Run{ID: "20261019-000000.000-cccccccc", Agent: "cursor", Status: runs.Running, PID: 4242, Start: "2026-10-19T00:00:00Z"}
+	path, err := runs.WriteFile(dir, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 10, 19, 0, 1, 0, 0, time.UTC)
+	d := &Delegate{Name: "cursor", Dirs: []string{dir}, PIDAlive: func(int) bool { return false }, Now: func() time.Time { return now }}
+	d.Read()
+
+	// The agent exited and the delegate wrote its final record.
+	r.Status = runs.Done
+	r.End = "2026-10-19T00:01:00Z"
+	if _, err := runs.WriteFile(dir, r); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(2 * closeAfter)
+	if f := d.Read(); f.Status != state.Done {
+		t.Fatalf("row: %v", f.Status)
+	}
+	if got, _ := runs.ReadFile(path); got.Status != runs.Done {
+		t.Fatalf("the delegate's done record was overwritten: %s", got.Status)
 	}
 }
 

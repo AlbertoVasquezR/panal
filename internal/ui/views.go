@@ -17,7 +17,7 @@ import (
 	"github.com/AlbertoVasquezR/panal/internal/state"
 )
 
-var agentOrder = []string{"claude", "agy", "codex", "opencode"}
+var agentOrder = []string{"claude", "agy", "codex", "opencode", "cursor"}
 
 // Run results, as stored in the run files (see internal/runs).
 const (

@@ -3,6 +3,7 @@
 package readers
 
 import (
+	"errors"
 	"os"
 	"syscall"
 )
@@ -15,5 +16,7 @@ func realPIDAlive(pid int) bool {
 	if err != nil {
 		return false
 	}
-	return p.Signal(syscall.Signal(0)) == nil
+	// EPERM: it exists but belongs to another user (a delegate run with sudo).
+	err = p.Signal(syscall.Signal(0))
+	return err == nil || errors.Is(err, syscall.EPERM)
 }

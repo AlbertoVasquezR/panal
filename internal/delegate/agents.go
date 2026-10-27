@@ -2,6 +2,7 @@ package delegate
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 )
 
@@ -41,6 +42,7 @@ var agents = map[string]agent{
 	"codex":    {build: codexArgs},
 	"agy":      {build: agyArgs},
 	"opencode": {build: opencodeArgs},
+	"cursor":   {build: cursorArgs},
 }
 
 // maxArgvTask: a task longer than this does not go on the command line
@@ -81,7 +83,7 @@ func codexArgs(a attempt) invocation {
 func agyArgs(a attempt) invocation {
 	prompt := a.Task
 	inv := invocation{}
-	if len(prompt) > maxArgvTask {
+	if len(prompt) > maxArgvTask || flagLike(prompt) {
 		if a.TaskFile == "" {
 			return invocation{NeedsTaskFile: true}
 		}
@@ -107,8 +109,8 @@ func agyArgs(a attempt) invocation {
 // opencodeArgs: `opencode run <message>` runs one turn in the current
 // directory. On Windows opencode is usually an npm .cmd shim, which goes
 // through cmd.exe: a task with quotes, %, &, |, <, >, ^, ! or line breaks
-// does not survive that, so such a task is attached with --file and the
-// message only points to it. Model: provider/model, with #variant for the
+// does not survive that, so such a task (or one that starts with "-") is
+// attached with --file and the message only points to it. Model: provider/model, with #variant for the
 // effort. Writes: --auto (approve what is not explicitly denied). Read-only:
 // the built-in plan agent, without --auto.
 //
@@ -128,7 +130,7 @@ func opencodeArgs(a attempt) invocation {
 	} else {
 		args = append(args, "--auto")
 	}
-	if shellSafe(a.Task) && len(a.Task) <= 2000 {
+	if shellSafe(a.Task) && !flagLike(a.Task) && len(a.Task) <= 2000 {
 		return invocation{Args: append(args, a.Task)}
 	}
 	if a.TaskFile == "" {
@@ -138,11 +140,68 @@ func opencodeArgs(a attempt) invocation {
 	return invocation{Args: args, NeedsTaskFile: true}
 }
 
+// cursorArgs: `cursor-agent -p` (also invoked as `agent`) runs one
+// non-interactive turn. --output-format stream-json writes JSONL events
+// that panal's activity reader parses from <log>.jsonl. --trust and
+// --workspace are always set so headless does not stall on the workspace
+// trust prompt. Writes: --force (also spelled --yolo on the CLI); that
+// is not confined to -d. Read-only: --auto-review lets the server
+// classifier run safe reads and commands and deny the rest. --sandbox
+// enabled is only passed on macOS and Linux: the CLI refuses it on
+// Windows ("Sandbox mode is enabled but not available on this system").
+// --mode plan is not used for -r: it rejects even harmless shell
+// commands. Effort is not a separate flag: it is folded into --model as
+// model[effort=…] when the model id does not already have brackets.
+//
+//	cursor-agent -p --output-format stream-json --trust --workspace <dir>
+//	             [--model <model> | --model <model>[effort=<effort>]]
+//	             --force | --auto-review [--sandbox enabled]
+//	             (<task> | a pointer at the task file)
+func cursorArgs(a attempt) invocation {
+	args := []string{"-p", "--output-format", "stream-json", "--trust", "--workspace", a.Dir}
+	if a.Link.Model != "" {
+		m := a.Link.Model
+		if a.Link.Effort != "" && !strings.Contains(m, "[") {
+			m += "[effort=" + a.Link.Effort + "]"
+		}
+		args = append(args, "--model", m)
+	}
+	if a.ReadOnly {
+		args = append(args, cursorReadOnlyFlags(runtime.GOOS)...)
+	} else {
+		args = append(args, "--force")
+	}
+	if shellSafe(a.Task) && !flagLike(a.Task) && len(a.Task) <= maxArgvTask {
+		return invocation{Args: append(args, a.Task), JSONEvents: true}
+	}
+	if a.TaskFile == "" {
+		return invocation{NeedsTaskFile: true, JSONEvents: true}
+	}
+	return invocation{Args: append(args, fileTaskPrompt(a.TaskFile)), NeedsTaskFile: true, JSONEvents: true}
+}
+
 func fileTaskPrompt(path string) string {
 	return "Your task is in the file " + path + ". Read it and do what it says."
+}
+
+// cursorReadOnlyFlags: --auto-review on every OS; --sandbox enabled only
+// where the CLI's sandbox exists (linux, darwin).
+func cursorReadOnlyFlags(goos string) []string {
+	args := []string{"--auto-review"}
+	if goos == "linux" || goos == "darwin" {
+		args = append(args, "--sandbox", "enabled")
+	}
+	return args
 }
 
 // shellSafe: s can go through cmd.exe as one quoted argument unchanged.
 func shellSafe(s string) bool {
 	return !strings.ContainsAny(s, "\"%&|<>^!\r\n")
+}
+
+// flagLike: the CLI could parse s as one of its own options (a task such
+// as "--force …" would turn -r into a writing run). Such a task goes
+// through the task file instead of the command line.
+func flagLike(s string) bool {
+	return strings.HasPrefix(strings.TrimLeft(s, " \t"), "-")
 }

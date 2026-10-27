@@ -152,3 +152,39 @@ func TestFromCodexTests(t *testing.T) {
 		t.Fatalf("no count: %q", r)
 	}
 }
+
+func TestFromCursorLastTool(t *testing.T) {
+	txt, _ := FromCursor(read(t, "cursor.jsonl"))
+	if txt != "$ go test ./internal/ui -run TestPager" {
+		t.Fatalf("got %q", txt)
+	}
+}
+
+func TestFromCursorEarlierEvents(t *testing.T) {
+	b := read(t, "cursor.jsonl")
+	cut := strings.Index(string(b), `"shellToolCall"`)
+	if cut < 0 {
+		t.Fatal("sample has no shell call")
+	}
+	if txt, _ := FromCursor(b[:cut]); txt != "writes pager_test.go" {
+		t.Fatalf("got %q", txt)
+	}
+	cut = strings.Index(string(b), `"writeToolCall"`)
+	if txt, _ := FromCursor(b[:cut]); txt != "reads pager.go" {
+		t.Fatalf("read: %q", txt)
+	}
+}
+
+func TestLatestCursorJSONL(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "20261007-120000-cursor-composer.txt")
+	if err := os.WriteFile(logPath+".jsonl", read(t, "cursor.jsonl"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if txt, _ := Latest("cursor", logPath); txt != "$ go test ./internal/ui -run TestPager" {
+		t.Fatalf("got %q", txt)
+	}
+	if act, n := Repetition("cursor", logPath); !strings.HasPrefix(act, "$ go test") || n < 1 {
+		t.Fatalf("repetition (%q, %d)", act, n)
+	}
+}

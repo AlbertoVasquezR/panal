@@ -9,8 +9,11 @@ package config
 
 import (
 	"bufio"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -20,7 +23,39 @@ import (
 )
 
 // Known are the agents `panal delegate` knows how to run.
-var Known = []string{"agy", "codex", "opencode"}
+var Known = []string{"agy", "codex", "cursor", "opencode"}
+
+// Bins are PATH names to try for a Known CLI. A CLI not listed is looked
+// up under its own name. cursor is installed as cursor-agent, or as the
+// agent alias; on Windows the installer also drops .cmd shims under
+// %LOCALAPPDATA%\cursor-agent.
+var Bins = map[string][]string{
+	"cursor": {"cursor-agent", "agent"},
+}
+
+// verifyBin are PATH names too generic to trust on their own: a hit only
+// counts if the check accepts its path. Nothing is run to check it.
+var verifyBin = map[string]func(path string) bool{
+	"agent": isCursorInstall,
+}
+
+// isCursorInstall: path, after following symlinks, lies inside a Cursor
+// CLI install. The installer puts the binary under
+// ~/.local/share/cursor-agent/versions/… and links agent and cursor-agent
+// to it; Homebrew's cask is cursor-cli; Windows uses
+// %LOCALAPPDATA%\cursor-agent.
+func isCursorInstall(path string) bool {
+	if r, err := filepath.EvalSymlinks(path); err == nil {
+		path = r
+	}
+	for _, el := range strings.FieldsFunc(filepath.ToSlash(path), func(r rune) bool { return r == '/' }) {
+		el = strings.ToLower(el)
+		if strings.Contains(el, "cursor-agent") || strings.Contains(el, "cursor-cli") {
+			return true
+		}
+	}
+	return false
+}
 
 // FileName is the config file's name inside runs.Home() (~/.panal).
 const FileName = "panal.conf"
@@ -298,4 +333,65 @@ func (r *Resolver) Disabled() []string {
 	sort.Strings(out)
 	r.signature, r.last = f, out
 	return out
+}
+
+// LookPath finds a Known CLI on PATH. For cursor it tries cursor-agent,
+// then agent, then the Windows install directory.
+func LookPath(name string) (string, error) {
+	return LookWith(exec.LookPath, name)
+}
+
+// LookWith is LookPath with a custom lookup, for tests.
+func LookWith(look func(string) (string, error), name string) (string, error) {
+	if look == nil {
+		look = exec.LookPath
+	}
+	names := Bins[name]
+	if len(names) == 0 {
+		return look(name)
+	}
+	var first error
+	for _, n := range names {
+		p, err := look(n)
+		if err == nil && verifyBin[n] != nil && !verifyBin[n](p) {
+			err = fmt.Errorf("%s at %s is not the Cursor CLI", n, p)
+		}
+		if err == nil {
+			return p, nil
+		}
+		if first == nil {
+			first = err
+		}
+	}
+	if p := windowsCursorInstall(); p != "" {
+		return p, nil
+	}
+	if first == nil {
+		first = exec.ErrNotFound
+	}
+	return "", first
+}
+
+// windowsCursorInstall is %LOCALAPPDATA%\cursor-agent\cursor-agent.cmd
+// (or agent.cmd / .exe), the Windows installer's default location. It is
+// also checked when LOCALAPPDATA is set on other OSes, so tests can point
+// at a fake tree.
+func windowsCursorInstall() string {
+	local := os.Getenv("LOCALAPPDATA")
+	if local == "" && runtime.GOOS == "windows" {
+		if u := os.Getenv("USERPROFILE"); u != "" {
+			local = filepath.Join(u, "AppData", "Local")
+		}
+	}
+	if local == "" {
+		return ""
+	}
+	dir := filepath.Join(local, "cursor-agent")
+	for _, n := range []string{"cursor-agent.cmd", "cursor-agent.exe", "agent.cmd", "agent.exe"} {
+		p := filepath.Join(dir, n)
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			return p
+		}
+	}
+	return ""
 }

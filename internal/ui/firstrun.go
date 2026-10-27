@@ -90,8 +90,8 @@ func (m Model) welcomeView(width int) string {
 	line := func(st lipgloss.Style, s string) { b.WriteString(st.Render(truncate(s, width)) + "\n") }
 	normal := lipgloss.NewStyle()
 
-	if len(m.rows)*18 <= width {
-		b.WriteString(Corral(m.rows, m.animation(), -1, m.now) + "\n\n")
+	if c := corralFor(m.rows, m.animation(), -1, m.now, width); c != "" {
+		b.WriteString(c + "\n\n")
 	}
 	line(bold, "  Hi. Nothing to show yet.")
 	line(dimS, "  Panal shows what your agents are doing while Claude Code orchestrates them. This is what it looks for:")

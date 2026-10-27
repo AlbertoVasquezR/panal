@@ -1,5 +1,5 @@
- ◆ Panal  detail · claude · 15:04:05                               ● 2  ◐ 1  ○ 1
-‹   claude   ● orchestrating    agy   codex   opencode  ›
+ ◆ Panal  detail · claude · 15:04:05                               ● 2  ◐ 1  ○ 2
+‹   claude   ● orchestrating    agy   codex   opencode   cursor  ›
 
 ╭──────────────────────────────────────────────────────────────────────────────╮
 │ CLAUDE  ·  orchestrating                                                     │

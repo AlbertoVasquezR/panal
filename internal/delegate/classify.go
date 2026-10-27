@@ -66,6 +66,22 @@ var quotaPatterns = map[string][]pattern{
 		p(runs.OutOfQuota, false, `exhausted your (capacity|quota)`),
 		p(runs.OutOfQuota, false, `(model|quota) (capacity|limit).{0,30}(reached|exceeded)`),
 		p(runs.NoPermission, false, `(permission|approval).{0,30}(denied|required|rejected)|not allowed in (plan|sandbox) mode`),
+		// Print / -p cannot prompt: agy auto-denies the tool and still
+		// exits 0 with no work (jetski on stdout; "Print mode:" in its log).
+		p(runs.NoPermission, true, `headless mode cannot prompt.{0,80}auto-denied`),
+		p(runs.NoPermission, true, `print mode: soft-denying tool confirmation`),
+	},
+	// cursor-agent (also invoked as agent): headless -p fails without
+	// --trust in an untrusted workspace; team admins can block headless;
+	// usage is the account's included-usage meters (interactive /usage
+	// only — those messages still appear on stderr when a turn is refused).
+	"cursor": {
+		p(runs.OutOfQuota, false, `you('|’)?ve hit your usage limit`),
+		p(runs.OutOfQuota, false, `included usage.{0,40}(exhausted|exceeded|used up)`),
+		p(runs.NoPermission, false, `untrusted workspace|trust the workspace|pass --trust`),
+		p(runs.NoPermission, false, `headless mode.{0,40}(disabled|blocked|not allowed)`),
+		p(runs.NoPermission, false, `not (logged in|authenticated)|please (log in|login)|authentication required`),
+		p(runs.NoPermission, false, `sandbox mode is enabled but not available|sandbox requires macos or linux`),
 	},
 }
 

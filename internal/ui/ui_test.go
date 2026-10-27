@@ -12,6 +12,7 @@ import (
 
 	"github.com/AlbertoVasquezR/panal/internal/forecast"
 	"github.com/AlbertoVasquezR/panal/internal/history"
+	"github.com/AlbertoVasquezR/panal/internal/mascots"
 	"github.com/AlbertoVasquezR/panal/internal/readers"
 	"github.com/AlbertoVasquezR/panal/internal/state"
 )
@@ -97,6 +98,7 @@ func TestHistory_FormatAndDuration(t *testing.T) {
 
 func TestModel_ToggleHistory(t *testing.T) {
 	m := New(nil, 2*time.Second)
+	m.runs = []history.Run{{Stamp: "1", Agent: "codex", Status: runDone}}
 	if m.inHistory {
 		t.Fatalf("should not start in history")
 	}
@@ -161,6 +163,40 @@ func TestCorralZzzOnlyWhenSleeping(t *testing.T) {
 	}
 	if !seenZ {
 		t.Fatal("codex out of quota never showed the zzz")
+	}
+}
+
+func TestCorralFitsFiveAgentsIn80Columns(t *testing.T) {
+	rows := []state.Row{
+		{Agent: "claude", Status: state.Orchestrating},
+		{Agent: "agy", Status: state.NoPermission},
+		{Agent: "codex", Status: state.OutOfQuota},
+		{Agent: "opencode", Status: state.Idle, Unseen: true},
+		{Agent: "cursor", Status: state.Working},
+	}
+	if got := corralColumn(4, 80); got != corralCol {
+		t.Fatalf("four agents in 80 columns keep the roomy column: %d", got)
+	}
+	if got := corralColumn(5, 79); got != 0 {
+		t.Fatalf("five agents in 79 columns should not fit: %d", got)
+	}
+	if corralFor(rows, Animation{}, 0, time.Time{}, 60) != "" {
+		t.Fatal("no corral at 60 columns with five agents")
+	}
+	for frame := 0; frame < 12; frame++ {
+		out := corralFor(rows, Animation{Frame: frame}, 2, time.Time{}, 80)
+		if out == "" {
+			t.Fatal("five agents should fit in 80 columns")
+		}
+		lines := strings.Split(out, "\n")
+		if len(lines) != mascots.Height/2+2 {
+			t.Fatalf("frame %d: %d lines, a status wrapped:\n%s", frame, len(lines), out)
+		}
+		for _, l := range lines {
+			if w := lipgloss.Width(l); w > 80 {
+				t.Fatalf("frame %d: line %d columns wide: %q", frame, w, l)
+			}
+		}
 	}
 }
 
